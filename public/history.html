@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>履歴</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
+      background: #fdf6ee;
+      color: #333;
+      min-height: 100vh;
+      padding-bottom: 40px;
+    }
+    nav {
+      background: #fff;
+      border-bottom: 2px solid #f0e6d8;
+      display: flex;
+      justify-content: center;
+      gap: 4px;
+      padding: 12px 16px;
+      margin-bottom: 20px;
+    }
+    nav a {
+      padding: 8px 20px;
+      border-radius: 999px;
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: bold;
+      color: #aaa;
+      background: #f5f0ea;
+    }
+    nav a.active { background: #e07b54; color: #fff; }
+    h1 {
+      text-align: center;
+      font-size: 1.4rem;
+      color: #e07b54;
+      margin-bottom: 20px;
+    }
+    .list {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 0 16px;
+    }
+    .item {
+      background: #fff;
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      transition: box-shadow 0.15s;
+    }
+    .item:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+    .badge {
+      flex-shrink: 0;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: bold;
+    }
+    .badge-日報 { background: #fde8dc; color: #e07b54; }
+    .badge-月案 { background: #dceeff; color: #3a7bd5; }
+    .badge-週案 { background: #dcf0e0; color: #3aa35a; }
+    .badge-日案 { background: #f0ddf5; color: #9b5ec4; }
+    .item-title { flex: 1; font-size: 0.95rem; font-weight: bold; }
+    .item-date { flex-shrink: 0; font-size: 0.78rem; color: #aaa; }
+    .delete-btn {
+      flex-shrink: 0;
+      background: none;
+      border: none;
+      font-size: 1.1rem;
+      cursor: pointer;
+      opacity: 0.4;
+      transition: opacity 0.15s;
+      padding: 4px;
+    }
+    .delete-btn:hover { opacity: 1; }
+    .empty {
+      text-align: center;
+      color: #bbb;
+      margin-top: 60px;
+      font-size: 0.95rem;
+      line-height: 2;
+    }
+
+    /* モーダル */
+    .overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 100;
+      padding: 24px 16px;
+      overflow-y: auto;
+    }
+    .modal {
+      background: #fff;
+      border-radius: 16px;
+      padding: 24px;
+      max-width: 640px;
+      margin: 0 auto;
+    }
+    .modal-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .modal-title { font-size: 1rem; font-weight: bold; flex: 1; }
+    .close-btn {
+      background: #f0ebe4;
+      border: none;
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      font-size: 1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-content {
+      white-space: pre-wrap;
+      line-height: 1.8;
+      font-size: 0.95rem;
+      background: #fdf6ee;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .copy-btn {
+      padding: 10px 20px;
+      background: #e07b54;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="/index.html">📓 日報</a>
+    <a href="/shidoan.html">📋 指導案</a>
+    <a href="/history.html" class="active">🗂 履歴</a>
+  </nav>
+
+  <h1>🗂 過去の生成履歴</h1>
+
+  <div class="list" id="list">
+    <div class="empty">読み込み中...</div>
+  </div>
+
+  <div class="overlay" id="overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="badge" id="modal-badge"></span>
+        <span class="modal-title" id="modal-title"></span>
+        <button class="close-btn" id="close-btn">✕</button>
+      </div>
+      <div class="modal-content" id="modal-content"></div>
+      <button class="copy-btn" id="copy-btn">📋 コピー</button>
+    </div>
+  </div>
+
+  <script>
+    function formatDate(str) {
+      const d = new Date(str);
+      return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    }
+
+    async function loadHistory() {
+      const res = await fetch('/api/history');
+      const items = await res.json();
+      const list = document.getElementById('list');
+
+      if (!items.length) {
+        list.innerHTML = '<div class="empty">まだ生成された書類がありません。<br>日報や指導案を生成すると<br>ここに保存されます。</div>';
+        return;
+      }
+
+      list.innerHTML = items.map(item => `
+        <div class="item" data-id="${item.id}">
+          <span class="badge badge-${item.type}">${item.type}</span>
+          <span class="item-title">${item.title}</span>
+          <span class="item-date">${formatDate(item.created_at)}</span>
+          <button class="delete-btn" data-id="${item.id}" title="削除">🗑</button>
+        </div>
+      `).join('');
+
+      list.querySelectorAll('.item').forEach(el => {
+        el.addEventListener('click', async (e) => {
+          if (e.target.classList.contains('delete-btn')) return;
+          const id = el.dataset.id;
+          const res = await fetch(`/api/history/${id}`);
+          const data = await res.json();
+          openModal(data);
+        });
+      });
+
+      list.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          if (!confirm('この履歴を削除しますか？')) return;
+          await fetch(`/api/history/${btn.dataset.id}`, { method: 'DELETE' });
+          loadHistory();
+        });
+      });
+    }
+
+    function openModal(data) {
+      document.getElementById('modal-badge').textContent = data.type;
+      document.getElementById('modal-badge').className = `badge badge-${data.type}`;
+      document.getElementById('modal-title').textContent = data.title;
+      document.getElementById('modal-content').textContent = data.content;
+      document.getElementById('overlay').style.display = 'block';
+    }
+
+    document.getElementById('close-btn').addEventListener('click', () => {
+      document.getElementById('overlay').style.display = 'none';
+    });
+    document.getElementById('overlay').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('overlay')) {
+        document.getElementById('overlay').style.display = 'none';
+      }
+    });
+
+    document.getElementById('copy-btn').addEventListener('click', () => {
+      const text = document.getElementById('modal-content').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.getElementById('copy-btn');
+        btn.textContent = '✅ コピーしました';
+        setTimeout(() => btn.textContent = '📋 コピー', 2000);
+      });
+    });
+
+    loadHistory();
+  </script>
+</body>
+</html>

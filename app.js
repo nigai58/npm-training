@@ -2,10 +2,26 @@
 
 const express = require('express');
 const Anthropic = require('@anthropic-ai/sdk');
+const Database = require('better-sqlite3');
 const path = require('path');
 
 const app = express();
 const client = new Anthropic.default({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+const db = new Database(path.join(__dirname, 'history.db'));
+db.exec(`
+  CREATE TABLE IF NOT EXISTS history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    type TEXT NOT NULL,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
+const insertHistory = db.prepare(
+  'INSERT INTO history (type, title, content) VALUES (?, ?, ?)'
+);
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -37,7 +53,9 @@ app.post('/api/generate', async (req, res) => {
       messages: [{ role: 'user', content: userContent }],
     });
 
-    res.json({ text: message.content[0].text });
+    const text = message.content[0].text;
+    insertHistory.run('日報', `${date}の日報`, text);
+    res.json({ text });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: '生成に失敗しました。APIキーを確認してください。' });
@@ -52,8 +70,11 @@ app.post('/api/generate-plan', async (req, res) => {
   }
 
   let userContent;
+  let title;
+
   if (type === '月案') {
     if (!month) return res.status(400).json({ error: '月は必須です' });
+    title = `${grade} ${month}月月案`;
     userContent = `以下の情報から保育指導計画（月案）を作成してください。
 
 対象クラス: ${grade}
@@ -72,6 +93,7 @@ app.post('/api/generate-plan', async (req, res) => {
 
   } else if (type === '週案') {
     if (!weekAim) return res.status(400).json({ error: '週のねらいは必須です' });
+    title = `${grade} 週案`;
     userContent = `以下の情報から保育指導計画（週案）を作成してください。
 
 対象クラス: ${grade}
@@ -87,6 +109,7 @@ ${grade}の発達段階に合った内容で作成してください。`;
 
   } else if (type === '日案') {
     if (!activityName) return res.status(400).json({ error: '活動名は必須です' });
+    title = `${grade} ${activityName}`;
     userContent = `以下の情報から保育指導計画（日案）を作成してください。
 
 対象クラス: ${grade}
@@ -115,11 +138,31 @@ ${grade}の発達段階に合った具体的な内容で作成してください
       messages: [{ role: 'user', content: userContent }],
     });
 
-    res.json({ text: message.content[0].text });
+    const text = message.content[0].text;
+    insertHistory.run(type, title, text);
+    res.json({ text });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: '生成に失敗しました。' });
   }
+});
+
+app.get('/api/history', (req, res) => {
+  const rows = db.prepare(
+    'SELECT id, type, title, created_at FROM history ORDER BY created_at DESC LIMIT 100'
+  ).all();
+  res.json(rows);
+});
+
+app.get('/api/history/:id', (req, res) => {
+  const row = db.prepare('SELECT * FROM history WHERE id = ?').get(req.params.id);
+  if (!row) return res.status(404).json({ error: '見つかりません' });
+  res.json(row);
+});
+
+app.delete('/api/history/:id', (req, res) => {
+  db.prepare('DELETE FROM history WHERE id = ?').run(req.params.id);
+  res.json({ ok: true });
 });
 
 const PORT = process.env.PORT || 3000;
