@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>保育日誌AI生成</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
+      background: #fdf6ee;
+      color: #333;
+      min-height: 100vh;
+      padding: 24px 16px;
+    }
+    h1 {
+      text-align: center;
+      font-size: 1.4rem;
+      color: #e07b54;
+      margin-bottom: 24px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      max-width: 640px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: bold;
+      color: #888;
+      margin-bottom: 8px;
+    }
+    input[type="date"], input[type="text"], textarea {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1.5px solid #e0d6cc;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-family: inherit;
+      background: #fdf6ee;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input[type="date"]:focus, input[type="text"]:focus, textarea:focus {
+      border-color: #e07b54;
+    }
+    textarea { resize: vertical; min-height: 72px; }
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .btn-toggle {
+      padding: 8px 16px;
+      border: 1.5px solid #e0d6cc;
+      border-radius: 999px;
+      background: #fdf6ee;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+    .btn-toggle.active {
+      background: #e07b54;
+      border-color: #e07b54;
+      color: #fff;
+      font-weight: bold;
+    }
+    .generate-btn {
+      display: block;
+      width: 100%;
+      max-width: 640px;
+      margin: 8px auto 24px;
+      padding: 16px;
+      background: #e07b54;
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      cursor: pointer;
+      font-family: inherit;
+      transition: opacity 0.2s;
+    }
+    .generate-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .result-card {
+      display: none;
+      background: #fff;
+      border-radius: 16px;
+      padding: 20px;
+      max-width: 640px;
+      margin: 0 auto 32px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      white-space: pre-wrap;
+      line-height: 1.8;
+      font-size: 0.95rem;
+    }
+    .result-label {
+      font-size: 0.85rem;
+      font-weight: bold;
+      color: #888;
+      margin-bottom: 12px;
+    }
+    .copy-btn {
+      margin-top: 12px;
+      padding: 8px 18px;
+      background: #f0ebe4;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.9rem;
+    }
+    .error { color: #c0392b; margin-top: 8px; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <h1>🌸 保育日誌 AI生成</h1>
+
+  <div class="card">
+    <label>📅 日付</label>
+    <input type="date" id="date" />
+  </div>
+
+  <div class="card">
+    <label>🌤 天気</label>
+    <div class="btn-group" id="weather-group">
+      <button class="btn-toggle" data-value="晴れ">☀️ 晴れ</button>
+      <button class="btn-toggle" data-value="曇り">☁️ 曇り</button>
+      <button class="btn-toggle" data-value="雨">🌧 雨</button>
+      <button class="btn-toggle" data-value="雪">❄️ 雪</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <label>🎈 活動内容（複数選択OK）</label>
+    <div class="btn-group" id="activity-group">
+      <button class="btn-toggle" data-value="体操">体操</button>
+      <button class="btn-toggle" data-value="お絵かき">お絵かき</button>
+      <button class="btn-toggle" data-value="製作">製作</button>
+      <button class="btn-toggle" data-value="読み聞かせ">読み聞かせ</button>
+      <button class="btn-toggle" data-value="外遊び">外遊び</button>
+      <button class="btn-toggle" data-value="リズム遊び">リズム遊び</button>
+      <button class="btn-toggle" data-value="砂遊び">砂遊び</button>
+      <button class="btn-toggle" data-value="水遊び">水遊び</button>
+      <button class="btn-toggle" data-value="ブロック遊び">ブロック遊び</button>
+      <button class="btn-toggle" data-value="歌・音楽">歌・音楽</button>
+      <button class="btn-toggle" data-value="絵本">絵本</button>
+      <button class="btn-toggle" data-value="散歩">散歩</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <label>🍱 給食メニュー</label>
+    <input type="text" id="meal" placeholder="例：ごはん、味噌汁、さばの塩焼き" />
+
+    <label style="margin-top:16px;">食べ具合</label>
+    <div class="btn-group" id="appetite-group">
+      <button class="btn-toggle" data-value="よく食べた">😊 よく食べた</button>
+      <button class="btn-toggle" data-value="普通">😐 普通</button>
+      <button class="btn-toggle" data-value="少なめ">😔 少なめ</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <label>📝 特記事項（任意）</label>
+    <textarea id="memo" placeholder="気になった子の様子、ケガ、保護者への連絡事項など"></textarea>
+  </div>
+
+  <button class="generate-btn" id="generate-btn">✨ 日報を生成する</button>
+
+  <div class="result-card" id="result-card">
+    <div class="result-label">生成された保育日誌</div>
+    <div id="result-text"></div>
+    <button class="copy-btn" id="copy-btn">📋 コピー</button>
+  </div>
+
+  <script>
+    // 今日の日付をデフォルト設定
+    document.getElementById('date').valueAsDate = new Date();
+
+    // 天気・食べ具合は単一選択
+    document.querySelectorAll('#weather-group .btn-toggle, #appetite-group .btn-toggle').forEach(btn => {
+      btn.addEventListener('click', () => {
+        btn.closest('.btn-group').querySelectorAll('.btn-toggle').forEach(b => b.classList.remove('active'));
+        btn.classList.toggle('active');
+      });
+    });
+
+    // 活動は複数選択
+    document.querySelectorAll('#activity-group .btn-toggle').forEach(btn => {
+      btn.addEventListener('click', () => btn.classList.toggle('active'));
+    });
+
+    function getSelected(groupId) {
+      return [...document.querySelectorAll(`#${groupId} .btn-toggle.active`)].map(b => b.dataset.value);
+    }
+
+    document.getElementById('generate-btn').addEventListener('click', async () => {
+      const date = document.getElementById('date').value;
+      const weather = getSelected('weather-group')[0];
+      const activities = getSelected('activity-group');
+      const meal = document.getElementById('meal').value;
+      const appetite = getSelected('appetite-group')[0];
+      const memo = document.getElementById('memo').value;
+
+      if (!date) return alert('日付を選択してください');
+      if (!weather) return alert('天気を選択してください');
+      if (!activities.length) return alert('活動内容を1つ以上選択してください');
+
+      const btn = document.getElementById('generate-btn');
+      btn.disabled = true;
+      btn.textContent = '生成中...';
+      document.getElementById('result-card').style.display = 'none';
+
+      try {
+        const res = await fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ date, weather, activities, meal, appetite, memo }),
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+
+        document.getElementById('result-text').textContent = data.text;
+        document.getElementById('result-card').style.display = 'block';
+        document.getElementById('result-card').scrollIntoView({ behavior: 'smooth' });
+      } catch (err) {
+        alert('エラー: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '✨ 日報を生成する';
+      }
+    });
+
+    document.getElementById('copy-btn').addEventListener('click', () => {
+      const text = document.getElementById('result-text').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.getElementById('copy-btn');
+        btn.textContent = '✅ コピーしました';
+        setTimeout(() => btn.textContent = '📋 コピー', 2000);
+      });
+    });
+  </script>
+</body>
+</html>
