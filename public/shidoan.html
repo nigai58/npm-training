@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>指導案AI生成</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
+      background: #fdf6ee;
+      color: #333;
+      min-height: 100vh;
+      padding-bottom: 40px;
+    }
+    nav {
+      background: #fff;
+      border-bottom: 2px solid #f0e6d8;
+      display: flex;
+      justify-content: center;
+      gap: 4px;
+      padding: 12px 16px;
+    }
+    nav a {
+      padding: 8px 20px;
+      border-radius: 999px;
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: bold;
+      color: #aaa;
+      background: #f5f0ea;
+    }
+    nav a.active { background: #e07b54; color: #fff; }
+    h1 {
+      text-align: center;
+      font-size: 1.4rem;
+      color: #e07b54;
+      margin: 20px 0 4px;
+    }
+    .type-tabs {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin: 0 16px 20px;
+    }
+    .type-tab {
+      flex: 1;
+      max-width: 140px;
+      padding: 10px;
+      border: 2px solid #e0d6cc;
+      border-radius: 12px;
+      background: #fff;
+      font-size: 0.95rem;
+      font-weight: bold;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s;
+      text-align: center;
+    }
+    .type-tab.active { border-color: #e07b54; background: #e07b54; color: #fff; }
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 20px;
+      margin: 0 auto 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      max-width: 640px;
+    }
+    label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: bold;
+      color: #888;
+      margin-bottom: 8px;
+    }
+    input[type="text"], textarea {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1.5px solid #e0d6cc;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-family: inherit;
+      background: #fdf6ee;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input[type="text"]:focus, textarea:focus { border-color: #e07b54; }
+    textarea { resize: vertical; min-height: 80px; }
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .btn-toggle {
+      padding: 8px 14px;
+      border: 1.5px solid #e0d6cc;
+      border-radius: 999px;
+      background: #fdf6ee;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+    .btn-toggle.active { background: #e07b54; border-color: #e07b54; color: #fff; font-weight: bold; }
+    .section { display: none; }
+    .section.visible { display: block; }
+    .generate-btn {
+      display: block;
+      width: calc(100% - 32px);
+      max-width: 640px;
+      margin: 8px auto 24px;
+      padding: 16px;
+      background: #e07b54;
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      cursor: pointer;
+      font-family: inherit;
+      transition: opacity 0.2s;
+    }
+    .generate-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .result-card {
+      display: none;
+      background: #fff;
+      border-radius: 16px;
+      padding: 20px;
+      max-width: 640px;
+      margin: 0 auto 32px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      white-space: pre-wrap;
+      line-height: 1.8;
+      font-size: 0.95rem;
+    }
+    .result-label { font-size: 0.85rem; font-weight: bold; color: #888; margin-bottom: 12px; }
+    .copy-btn {
+      margin-top: 12px;
+      padding: 8px 18px;
+      background: #f0ebe4;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="/index.html">📓 日報</a>
+    <a href="/shidoan.html" class="active">📋 指導案</a>
+  </nav>
+
+  <h1>📋 指導案 AI生成</h1>
+
+  <div class="type-tabs">
+    <button class="type-tab active" data-type="月案">月案</button>
+    <button class="type-tab" data-type="週案">週案</button>
+    <button class="type-tab" data-type="日案">日案</button>
+  </div>
+
+  <!-- 共通: クラス選択 -->
+  <div class="card">
+    <label>👶 対象クラス</label>
+    <div class="btn-group" id="grade-group">
+      <button class="btn-toggle" data-value="0歳児クラス">0歳児</button>
+      <button class="btn-toggle" data-value="1歳児クラス">1歳児</button>
+      <button class="btn-toggle" data-value="2歳児クラス">2歳児</button>
+      <button class="btn-toggle" data-value="3歳児クラス">3歳児</button>
+      <button class="btn-toggle" data-value="4歳児クラス">4歳児</button>
+      <button class="btn-toggle" data-value="5歳児クラス">5歳児</button>
+      <button class="btn-toggle" data-value="異年齢混合クラス">混合</button>
+    </div>
+  </div>
+
+  <!-- 月案セクション -->
+  <div class="section visible" id="section-月案">
+    <div class="card">
+      <label>📅 対象月</label>
+      <div class="btn-group" id="month-group">
+        <button class="btn-toggle" data-value="1">1月</button>
+        <button class="btn-toggle" data-value="2">2月</button>
+        <button class="btn-toggle" data-value="3">3月</button>
+        <button class="btn-toggle" data-value="4">4月</button>
+        <button class="btn-toggle" data-value="5">5月</button>
+        <button class="btn-toggle" data-value="6">6月</button>
+        <button class="btn-toggle" data-value="7">7月</button>
+        <button class="btn-toggle" data-value="8">8月</button>
+        <button class="btn-toggle" data-value="9">9月</button>
+        <button class="btn-toggle" data-value="10">10月</button>
+        <button class="btn-toggle" data-value="11">11月</button>
+        <button class="btn-toggle" data-value="12">12月</button>
+      </div>
+    </div>
+    <div class="card">
+      <label>🎉 季節・行事（複数選択OK）</label>
+      <div class="btn-group" id="event-group">
+        <button class="btn-toggle" data-value="入園・進級">入園・進級</button>
+        <button class="btn-toggle" data-value="こどもの日">こどもの日</button>
+        <button class="btn-toggle" data-value="梅雨">梅雨</button>
+        <button class="btn-toggle" data-value="七夕">七夕</button>
+        <button class="btn-toggle" data-value="夏祭り">夏祭り</button>
+        <button class="btn-toggle" data-value="運動会">運動会</button>
+        <button class="btn-toggle" data-value="遠足">遠足</button>
+        <button class="btn-toggle" data-value="お月見">お月見</button>
+        <button class="btn-toggle" data-value="ハロウィン">ハロウィン</button>
+        <button class="btn-toggle" data-value="七五三">七五三</button>
+        <button class="btn-toggle" data-value="クリスマス">クリスマス</button>
+        <button class="btn-toggle" data-value="節分">節分</button>
+        <button class="btn-toggle" data-value="ひなまつり">ひなまつり</button>
+        <button class="btn-toggle" data-value="卒園">卒園</button>
+      </div>
+    </div>
+    <div class="card">
+      <label>📝 前月の子どもの様子（任意）</label>
+      <textarea id="prevMonthNote" placeholder="例：戸外遊びを好み、友だちとルールのある遊びを楽しむ姿が見られた"></textarea>
+      <label style="margin-top:16px;">今月のねらい（任意・空欄でAIにお任せ）</label>
+      <input type="text" id="aim" placeholder="例：夏の自然に興味を持ち、水や砂の感触を楽しむ" />
+    </div>
+  </div>
+
+  <!-- 週案セクション -->
+  <div class="section" id="section-週案">
+    <div class="card">
+      <label>🎯 週のねらい</label>
+      <input type="text" id="weekAim" placeholder="例：友だちと一緒に体を動かす楽しさを味わう" />
+      <label style="margin-top:16px;">📅 予定する活動（複数選択OK）</label>
+      <div class="btn-group" id="week-activity-group">
+        <button class="btn-toggle" data-value="体操">体操</button>
+        <button class="btn-toggle" data-value="外遊び">外遊び</button>
+        <button class="btn-toggle" data-value="製作">製作</button>
+        <button class="btn-toggle" data-value="お絵かき">お絵かき</button>
+        <button class="btn-toggle" data-value="読み聞かせ">読み聞かせ</button>
+        <button class="btn-toggle" data-value="リズム遊び">リズム遊び</button>
+        <button class="btn-toggle" data-value="散歩">散歩</button>
+        <button class="btn-toggle" data-value="歌・音楽">歌・音楽</button>
+        <button class="btn-toggle" data-value="水遊び">水遊び</button>
+        <button class="btn-toggle" data-value="砂遊び">砂遊び</button>
+        <button class="btn-toggle" data-value="ゲーム遊び">ゲーム遊び</button>
+        <button class="btn-toggle" data-value="行事準備">行事準備</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 日案セクション -->
+  <div class="section" id="section-日案">
+    <div class="card">
+      <label>🎨 活動名</label>
+      <input type="text" id="activityName" placeholder="例：新聞紙遊び、どんぐり拾い" />
+      <label style="margin-top:16px;">活動のねらい（任意・空欄でAIにお任せ）</label>
+      <textarea id="activityAim" placeholder="例：新聞紙の感触を楽しみ、破る・丸めるなど様々な遊び方を試す"></textarea>
+    </div>
+  </div>
+
+  <button class="generate-btn" id="generate-btn">✨ 指導案を生成する</button>
+
+  <div class="result-card" id="result-card">
+    <div class="result-label" id="result-label">生成された指導案</div>
+    <div id="result-text"></div>
+    <button class="copy-btn" id="copy-btn">📋 コピー</button>
+  </div>
+
+  <script>
+    let currentType = '月案';
+
+    // タブ切り替え
+    document.querySelectorAll('.type-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.type-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        currentType = tab.dataset.type;
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('visible'));
+        document.getElementById(`section-${currentType}`).classList.add('visible');
+      });
+    });
+
+    // 単一選択（クラス・月）
+    ['grade-group', 'month-group'].forEach(id => {
+      document.querySelectorAll(`#${id} .btn-toggle`).forEach(btn => {
+        btn.addEventListener('click', () => {
+          btn.closest('.btn-group').querySelectorAll('.btn-toggle').forEach(b => b.classList.remove('active'));
+          btn.classList.toggle('active');
+        });
+      });
+    });
+
+    // 複数選択（行事・週活動）
+    ['event-group', 'week-activity-group'].forEach(id => {
+      document.querySelectorAll(`#${id} .btn-toggle`).forEach(btn => {
+        btn.addEventListener('click', () => btn.classList.toggle('active'));
+      });
+    });
+
+    function getSelected(groupId) {
+      return [...document.querySelectorAll(`#${groupId} .btn-toggle.active`)].map(b => b.dataset.value);
+    }
+
+    document.getElementById('generate-btn').addEventListener('click', async () => {
+      const grade = getSelected('grade-group')[0];
+      if (!grade) return alert('クラスを選択してください');
+
+      const body = { type: currentType, grade };
+
+      if (currentType === '月案') {
+        const month = getSelected('month-group')[0];
+        if (!month) return alert('月を選択してください');
+        body.month = month;
+        body.events = getSelected('event-group');
+        body.prevMonthNote = document.getElementById('prevMonthNote').value;
+        body.aim = document.getElementById('aim').value;
+
+      } else if (currentType === '週案') {
+        const weekAim = document.getElementById('weekAim').value;
+        if (!weekAim) return alert('週のねらいを入力してください');
+        body.weekAim = weekAim;
+        body.weekActivities = getSelected('week-activity-group');
+
+      } else if (currentType === '日案') {
+        const activityName = document.getElementById('activityName').value;
+        if (!activityName) return alert('活動名を入力してください');
+        body.activityName = activityName;
+        body.activityAim = document.getElementById('activityAim').value;
+      }
+
+      const btn = document.getElementById('generate-btn');
+      btn.disabled = true;
+      btn.textContent = '生成中...';
+      document.getElementById('result-card').style.display = 'none';
+
+      try {
+        const res = await fetch('/api/generate-plan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+
+        document.getElementById('result-label').textContent = `生成された${currentType}`;
+        document.getElementById('result-text').textContent = data.text;
+        document.getElementById('result-card').style.display = 'block';
+        document.getElementById('result-card').scrollIntoView({ behavior: 'smooth' });
+      } catch (err) {
+        alert('エラー: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '✨ 指導案を生成する';
+      }
+    });
+
+    document.getElementById('copy-btn').addEventListener('click', () => {
+      const text = document.getElementById('result-text').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.getElementById('copy-btn');
+        btn.textContent = '✅ コピーしました';
+        setTimeout(() => btn.textContent = '📋 コピー', 2000);
+      });
+    });
+  </script>
+</body>
+</html>

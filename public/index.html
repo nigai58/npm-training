@@ -11,8 +11,27 @@
       background: #fdf6ee;
       color: #333;
       min-height: 100vh;
-      padding: 24px 16px;
+      padding-bottom: 40px;
     }
+    nav {
+      background: #fff;
+      border-bottom: 2px solid #f0e6d8;
+      display: flex;
+      justify-content: center;
+      gap: 4px;
+      padding: 12px 16px;
+      margin-bottom: 20px;
+    }
+    nav a {
+      padding: 8px 20px;
+      border-radius: 999px;
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: bold;
+      color: #aaa;
+      background: #f5f0ea;
+    }
+    nav a.active { background: #e07b54; color: #fff; }
     h1 {
       text-align: center;
       font-size: 1.4rem;
@@ -121,6 +140,10 @@
   </style>
 </head>
 <body>
+  <nav>
+    <a href="/index.html" class="active">📓 日報</a>
+    <a href="/shidoan.html">📋 指導案</a>
+  </nav>
   <h1>🌸 保育日誌 AI生成</h1>
 
   <div class="card">

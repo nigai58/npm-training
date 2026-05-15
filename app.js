@@ -44,6 +44,84 @@ app.post('/api/generate', async (req, res) => {
   }
 });
 
+app.post('/api/generate-plan', async (req, res) => {
+  const { type, grade, month, events, prevMonthNote, aim, weekAim, weekActivities, activityName, activityAim } = req.body;
+
+  if (!type || !grade) {
+    return res.status(400).json({ error: 'プランの種類とクラスは必須です' });
+  }
+
+  let userContent;
+  if (type === '月案') {
+    if (!month) return res.status(400).json({ error: '月は必須です' });
+    userContent = `以下の情報から保育指導計画（月案）を作成してください。
+
+対象クラス: ${grade}
+対象月: ${month}月
+季節・行事: ${events?.join('、') || 'なし'}
+前月の子どもの様子: ${prevMonthNote || '特になし'}
+担任からのねらい（任意）: ${aim || 'お任せ'}
+
+【出力形式】
+・今月のねらい（2〜3項目）
+・子どもの姿
+・保育者の援助・環境構成
+・家庭との連携
+
+保育所保育指針に沿った文体で、${grade}の発達段階に合った内容で作成してください。`;
+
+  } else if (type === '週案') {
+    if (!weekAim) return res.status(400).json({ error: '週のねらいは必須です' });
+    userContent = `以下の情報から保育指導計画（週案）を作成してください。
+
+対象クラス: ${grade}
+週のねらい: ${weekAim}
+予定している活動: ${weekActivities?.join('、') || 'お任せ'}
+
+【出力形式】
+・週のねらい
+・月〜金の活動内容（各曜日）
+・保育者の援助・留意点
+
+${grade}の発達段階に合った内容で作成してください。`;
+
+  } else if (type === '日案') {
+    if (!activityName) return res.status(400).json({ error: '活動名は必須です' });
+    userContent = `以下の情報から保育指導計画（日案）を作成してください。
+
+対象クラス: ${grade}
+活動名: ${activityName}
+活動のねらい: ${activityAim || 'お任せ'}
+
+【出力形式】
+・活動のねらい
+・準備物
+・導入（5分程度）
+・展開（メインの活動）
+・まとめ・振り返り
+・保育者の援助・留意点
+
+${grade}の発達段階に合った具体的な内容で作成してください。`;
+
+  } else {
+    return res.status(400).json({ error: '不明なプランタイプです' });
+  }
+
+  try {
+    const message = await client.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 2048,
+      system: 'あなたは経験豊富な保育士・幼稚園教諭です。厚生労働省の保育所保育指針に沿った、実践的で温かみのある保育指導計画を作成してください。',
+      messages: [{ role: 'user', content: userContent }],
+    });
+
+    res.json({ text: message.content[0].text });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: '生成に失敗しました。' });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`サーバー起動: http://localhost:${PORT}`);
