@@ -10,6 +10,9 @@ import { OS } from '../systems/OfudaSystem.js';
 import { PDS } from '../systems/PlayerDataSystem.js';
 import { RewardSystem } from '../systems/RewardSystem.js';
 import { CombatSystem } from '../systems/CombatSystem.js';
+import { Run } from '../systems/RunState.js';
+import { BlessingSystem } from '../systems/BlessingSystem.js';
+import { BlessingChoiceUI } from '../ui/BlessingChoiceUI.js';
 import { bindBus } from '../utils/SceneBus.js';
 
 const ROOM_HINTS = {
@@ -160,6 +163,23 @@ export class DungeonScene extends Phaser.Scene {
       DS.clearRoom();
       RewardPopup.show(this, room.template.width / 2, 60, '扉が開いた');
     }
+    // 戦闘部屋クリアでご利益を1つ選ばせる
+    if (def.type === 'battle') {
+      this.time.delayedCall(400, () => this._offerBlessing());
+    }
+  }
+
+  _offerBlessing() {
+    if (this._transitioning) return;
+    this._choosing = true;
+    this._player?.body.setVelocity(0, 0);
+    const options = BlessingSystem.offer(3);
+    this._blessingUI = new BlessingChoiceUI(this, options, (b) => {
+      BlessingSystem.choose(b);
+      this._choosing = false;
+      this._blessingUI = null;
+      RewardPopup.show(this, this._player.x, this._player.y - 30, `ご利益「${b.label}」`);
+    });
   }
 
   _onEnemyDied(e) {
@@ -168,11 +188,13 @@ export class DungeonScene extends Phaser.Scene {
     const key = ENEMY_REWARD_KEY[e.enemyData?.label];
     if (key) {
       const drop = RewardSystem.generateDrop(key);
-      if (drop?.magatama > 0) {
-        RewardPopup.show(this, e.x, e.y - 20, `勾玉 +${drop.magatama}`);
-        RewardSystem.collect({ magatama: drop.magatama });
+      const gained = Run.applyMagatama(drop?.magatama ?? 0);   // 狐の加護
+      if (gained > 0) {
+        RewardPopup.show(this, e.x, e.y - 20, `勾玉 +${gained}`);
+        RewardSystem.collect({ magatama: gained });
       }
     }
+    if (Run.lifestealOnKill > 0) PDS.heal(Run.lifestealOnKill);  // 生命の勾玉
     RewardPopup.show(this, e.x, e.y, `${e.enemyData?.label ?? 'もののけ'}を鎮めた`);
     // 黒いモヤが晴れる演出 → スプライト破棄
     this._vfxCircle(e.x, e.y, (e.enemyData?.size ?? 28) * 0.8, 0xddccff, 300);
@@ -290,6 +312,7 @@ export class DungeonScene extends Phaser.Scene {
     this.time.delayedCall(600, () => {
       this._dlg.show(DIALOGUES.boss_defeated, () => {
         const drop = RewardSystem.generateDrop('chest_boss');
+        drop.magatama = Run.applyMagatama(drop.magatama);   // 狐の加護
         RewardSystem.collect(drop);
         DS.clearRoom();
         this._currentRoom.unlockDoors();
@@ -330,7 +353,7 @@ export class DungeonScene extends Phaser.Scene {
 
   // ─── メインループ ─────────────────────────────
   update(time, delta) {
-    if (this._transitioning || this._dlg?.isVisible()) return;
+    if (this._transitioning || this._choosing || this._dlg?.isVisible()) return;
     const p = this._player;
     if (!p?.active) return;
 
@@ -364,6 +387,7 @@ export class DungeonScene extends Phaser.Scene {
       if (cur.type === 'treasure' && !cur._chestOpened) {
         cur._chestOpened = true;
         const drop = RewardSystem.generateDrop('chest_treasure');
+        drop.magatama = Run.applyMagatama(drop.magatama);   // 狐の加護
         RewardSystem.collect(drop);
         const W = room.template.width, H = room.template.height;
         RewardPopup.show(this, W / 2, H / 2, `宝箱　勾玉×${drop.magatama}！`);
@@ -396,6 +420,7 @@ export class DungeonScene extends Phaser.Scene {
   _cleanup() {
     this.hud?.destroy();
     this._dlg?.destroy();
+    this._blessingUI?._objects?.forEach(o => o?.destroy());
     if (this._wallCollider) { this._wallCollider.destroy(); this._wallCollider = null; }
     this._currentRoom?.destroy();
     this._projectiles?.forEach(p => p.active && p.destroy());

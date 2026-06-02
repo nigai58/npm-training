@@ -1,5 +1,7 @@
 import { OFUDA_DATA } from '../data/OfudaData.js';
 import { CombatSystem } from './CombatSystem.js';
+import { PDS } from './PlayerDataSystem.js';
+import { Run } from './RunState.js';
 import { Bus } from '../utils/EventBus.js';
 
 class OfudaSystem {
@@ -22,10 +24,18 @@ class OfudaSystem {
 
   use(id, player, scene, enemies) {
     if (!this.canUse(id)) return false;
-    const data = OFUDA_DATA[id];
-    if (!data) return false;
+    const base = OFUDA_DATA[id];
+    if (!base) return false;
 
-    this.cooldowns[id] = Date.now() + data.cooldown;
+    const stats = PDS.getStats();
+    // 恒久強化 × ご利益で実効値を算出（元データは不変）
+    const data = {
+      ...base,
+      damage: Math.round((base.damage ?? 0) * stats.ofudaPowerMult * (Run.ofudaDamageMult[id] ?? 1)),
+      radius: (base.radius ?? 0) * (Run.ofudaRadiusMult[id] ?? 1),
+    };
+    const cd = base.cooldown * stats.ofudaCdMult * Run.ofudaCdMult;
+    this.cooldowns[id] = Date.now() + cd;
     Bus.emit('ofuda:used', id, data);
 
     if (id === 'fire')  this._useFire(data, player, scene, enemies);

@@ -1,9 +1,11 @@
 import { PDS } from '../systems/PlayerDataSystem.js';
 import { DS } from '../systems/DungeonSystem.js';
 import { OS } from '../systems/OfudaSystem.js';
+import { BlessingSystem } from '../systems/BlessingSystem.js';
 import { DialogueBox } from '../utils/DialogueSystem.js';
 import { DIALOGUES } from '../data/DialogueData.js';
 import { bindBus } from '../utils/SceneBus.js';
+import { ShopUI } from '../ui/ShopUI.js';
 
 const W = 800, H = 560;
 const WALL = 30;
@@ -29,7 +31,6 @@ export class TownScene extends Phaser.Scene {
     this._setupDungeonGate();
 
     OS.reset();
-    if (!this._returning) PDS.reset();
 
     this.time.delayedCall(300, () => this._playEntrance());
   }
@@ -171,13 +172,32 @@ export class TownScene extends Phaser.Scene {
     const fudaya = this._cleared ? DIALOGUES.fudaya_after_clear : DIALOGUES.fudaya_1;
     this._addNpc(160, 110, 0xffbb66, '札屋・紙月', 'fudaya', fudaya);
     this._addNpc(W - 160, 110, 0xcc8844, '鍛冶屋・火月', 'kajiya', DIALOGUES.kajiya_1);
+    // 神社（賽銭で体力・回避を強化）
+    this._interactables.push({
+      x: W - 170, y: H - 170, label: '星見神社 [E]',
+      onInteract: () => this._openShop('shrine'),
+    });
   }
 
-  _addNpc(x, y, color, label, key, dialogue) {
-    const body = this.add.rectangle(x, y, 20, 30, color).setDepth(8);
-    const head = this.add.circle(x, y - 22, 12, color).setDepth(8);
+  _addNpc(x, y, color, label, shopNpc, dialogue) {
+    this.add.rectangle(x, y, 20, 30, color).setDepth(8);
+    this.add.circle(x, y - 22, 12, color).setDepth(8);
     this.add.text(x, y - 44, label, { fontSize: '11px', color: '#ffffcc', fontFamily: 'serif', backgroundColor: '#000000aa', padding: { x: 3, y: 2 } }).setDepth(9).setOrigin(0.5);
-    this._interactables.push({ x, y, label: `${label} [E]`, onInteract: () => this._dlg.show(dialogue) });
+    // 会話 → 終わったら強化メニューを開く
+    this._interactables.push({
+      x, y, label: `${label} [E]`,
+      onInteract: () => this._dlg.show(dialogue, () => this._openShop(shopNpc)),
+    });
+  }
+
+  _openShop(npc) {
+    if (this._shop) return;
+    this._shopOpen = true;
+    this.player.body.setVelocity(0, 0);
+    this._shop = new ShopUI(this, npc, () => {
+      this._shop = null;
+      this._shopOpen = false;
+    });
   }
 
   _setupDungeonGate() {
@@ -191,10 +211,12 @@ export class TownScene extends Phaser.Scene {
   _buildUI() {
     this.add.text(W / 2, 20, '★ 星見町', { fontSize: '22px', color: '#ffddcc', fontFamily: 'serif', stroke: '#000', strokeThickness: 3 }).setDepth(20).setOrigin(0.5);
 
-    this._magText = this.add.text(W - 20, 18, `勾玉: ${PDS.getMagatama()}`, {
+    this._magText = this.add.text(W - 20, 18, '', {
       fontSize: '15px', color: '#ffdd88', fontFamily: 'serif',
     }).setDepth(20).setOrigin(1, 0);
-    bindBus(this, 'player:magatama', n => { if (this._magText?.active) this._magText.setText(`勾玉: ${n}`); });
+    this._refreshCurrency();
+    bindBus(this, 'player:magatama', () => this._refreshCurrency());
+    bindBus(this, 'player:kakera', () => this._refreshCurrency());
 
     const goal = this._cleared
       ? '目的: 神具を強化に使い、次の異界へ備えよう'
@@ -210,6 +232,12 @@ export class TownScene extends Phaser.Scene {
     this._dlg = new DialogueBox(this);
   }
 
+  _refreshCurrency() {
+    if (this._magText?.active) {
+      this._magText.setText(`勾玉: ${PDS.getMagatama()}   欠片: ${PDS.getKakera()}`);
+    }
+  }
+
   _setupInput() {
     this.cursors = this.input.keyboard.createCursorKeys();
     this.keys = this.input.keyboard.addKeys('W,A,S,D,E');
@@ -217,7 +245,7 @@ export class TownScene extends Phaser.Scene {
   }
 
   update() {
-    if (this._dlg?.isVisible()) {
+    if (this._dlg?.isVisible() || this._shopOpen) {
       this.player.body.setVelocity(0, 0);
       return;
     }
@@ -259,6 +287,8 @@ export class TownScene extends Phaser.Scene {
     this._dlg.show(DIALOGUES.kohaku_before_dungeon, () => {
       DS.generate();
       OS.reset();
+      BlessingSystem.reset();   // ご利益を初期化
+      PDS.startRun();           // HP全回復・ランボーナス初期化
       this.cameras.main.fade(500, 0, 0, 0);
       this.time.delayedCall(520, () => this.scene.start('Dungeon'));
     });

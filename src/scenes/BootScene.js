@@ -1,3 +1,5 @@
+import { PDS } from '../systems/PlayerDataSystem.js';
+
 export class BootScene extends Phaser.Scene {
   constructor() { super('Boot'); }
 
@@ -10,6 +12,8 @@ export class BootScene extends Phaser.Scene {
   }
 
   create() {
-    this.scene.start('Prologue');
+    PDS.load();   // セーブデータ（恒久強化・勾玉・進行）を読み込む
+    // 一度でもクリア済みなら、プロローグを飛ばして町から再開
+    this.scene.start(PDS.hasFlag('dungeon1_cleared') ? 'Town' : 'Prologue');
   }
 }

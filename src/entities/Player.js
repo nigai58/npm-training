@@ -2,6 +2,7 @@ import { StateMachine } from '../utils/StateMachine.js';
 import { WEAPON_DATA } from '../data/WeaponData.js';
 import { CombatSystem } from '../systems/CombatSystem.js';
 import { PDS } from '../systems/PlayerDataSystem.js';
+import { Run } from '../systems/RunState.js';
 import { Bus } from '../utils/EventBus.js';
 import { bindBus } from '../utils/SceneBus.js';
 
@@ -15,8 +16,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.body.setSize(24, 24);
     this.setDepth(10);
 
+    this.baseSpeed = 160;
     this.speed = 160;
-    this.hp = PDS.getMaxHp();
+    this.hp = PDS.getHp();
     this.maxHp = PDS.getMaxHp();
     this.invincible = false;
     this.dodging = false;
@@ -56,11 +58,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this._hitbox.setPosition(hx, hy);
     this._hitbox.setSize(w.hitboxW, w.hitboxH);
 
-    const damages = w.damage;
+    let dmg = w.damage[step] * PDS.getStats().attackMult;
+    if (step === 2) dmg *= Run.comboFinisherMult;   // 破魔の冴え
     Bus.emit('player:swing', {
       x: hx, y: hy,
       w: w.hitboxW, h: w.hitboxH,
-      damage: damages[step],
+      damage: Math.round(dmg),
       knockback: w.knockback,
       angle,
     });
@@ -98,14 +101,15 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   tryDodge() {
     if (this.dodgeCooldown > 0 || this.dodging || this.stunned) return;
-    this.dodgeCooldown = 900;
+    const cd = 900 * PDS.getStats().dodgeCdMult;   // 韋駄天で短縮
+    this.dodgeCooldown = cd;
     CombatSystem.dodge(this);
     const angle = this.facingAngle;
     this.body.setVelocity(Math.cos(angle) * 420, Math.sin(angle) * 420);
     this.scene.time.delayedCall(200, () => {
       if (this.body) this.body.setVelocity(0, 0);
     });
-    this.scene.time.delayedCall(900, () => { this.dodgeCooldown = 0; });
+    this.scene.time.delayedCall(cd, () => { if (this.active) this.dodgeCooldown = 0; });
   }
 
   update(cursors, keys, delta) {
@@ -135,6 +139,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.facingAngle = Math.atan2(vy, vx);
     }
 
+    this.speed = this.baseSpeed * Run.speedMult;   // 韋駄天の足
     this.body.setVelocity(vx * this.speed, vy * this.speed);
 
     if (this.comboTimer > 0) this.comboTimer -= delta;
@@ -151,8 +156,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   receiveDamage(amount) {
-    const final = CombatSystem.guard(this, amount);
     if (this.invincible) return;
+    let final = CombatSystem.guard(this, amount);
+    final = Math.max(1, Math.ceil(final * (1 - Run.damageReduction)));  // 火防の護符
     PDS.takeDamage(final);
     this.invincible = true;
     this.scene.time.delayedCall(800, () => { if (this.active) this.invincible = false; });
