@@ -1,5 +1,6 @@
 import { DS } from '../systems/DungeonSystem.js';
 import { PDS } from '../systems/PlayerDataSystem.js';
+import { ALL_RELICS } from '../data/DungeonData.js';
 
 export class DungeonClearScene extends Phaser.Scene {
   constructor() { super('DungeonClear'); }
@@ -27,7 +28,7 @@ export class DungeonClearScene extends Phaser.Scene {
   }
 
   _buildContent(W, H) {
-    this.add.text(W / 2, 80, '★ 朱鳥居の迷宮　攻略！', {
+    this.add.text(W / 2, 80, `★ ${DS.getDungeonName()}　攻略！`, {
       fontSize: '26px', color: '#ffdd88', fontFamily: 'serif',
       stroke: '#221100', strokeThickness: 5,
     }).setOrigin(0.5);
@@ -54,14 +55,15 @@ export class DungeonClearScene extends Phaser.Scene {
     allItems.forEach(item => row(`・${item.label}`, '#88ffcc'));
 
     y = Math.max(y, 350);
-    if (allFlags.includes('dungeon1_cleared')) {
-      // 五つの神具：火の勾玉が最初の1つ
-      const got = PDS.getInventory().filter(i => i.id === 'hi_no_magatama').length;
+    // 五つの神具：所持済みの神具を数える
+    const got = PDS.getInventory().filter(i => ALL_RELICS.includes(i.id)).length;
+    if (got > 0) {
       this.add.text(W / 2, y, `星灯りの神具　${got} / 5`, {
         fontSize: '15px', color: '#ffcc66', fontFamily: 'serif',
       }).setOrigin(0.5);
       y += 28;
-      this.add.text(W / 2, y, '神社の灯籠に火が戻った……', {
+      const note = got >= 2 ? '星見町に、また光が戻っていく……' : '神社の灯籠に火が戻った……';
+      this.add.text(W / 2, y, note, {
         fontSize: '13px', color: '#ffeecc', fontFamily: 'serif',
       }).setOrigin(0.5);
     }

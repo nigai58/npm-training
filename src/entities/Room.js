@@ -2,12 +2,18 @@ import { Kooni } from './enemies/Kooni.js';
 import { Kitsunebi } from './enemies/Kitsunebi.js';
 import { MovingLantern } from './enemies/MovingLantern.js';
 import { BossKomainu } from './enemies/Boss_Komainu.js';
+import { BossKyouka } from './enemies/Boss_Kyouka.js';
+import { ENEMY_DATA } from '../data/EnemyData.js';
 import { Bus } from '../utils/EventBus.js';
 
 const WALL = 48;
 const DOOR_W = 80;
 
-const ENEMY_CLASS = { kooni: Kooni, kitsunebi: Kitsunebi, lantern: MovingLantern, komainu: BossKomainu };
+// 敵タイプ → 挙動クラス。迷い宿の敵は既存AIを別ステータスで再利用する。
+const ENEMY_CLASS = {
+  kooni: Kooni, kitsunebi: Kitsunebi, lantern: MovingLantern, komainu: BossKomainu,
+  karakasa: Kooni, amefuri: Kitsunebi, mizudama: MovingLantern, kyouka: BossKyouka,
+};
 
 export class Room {
   constructor(scene, template, roomIndex, totalRooms) {
@@ -148,7 +154,7 @@ export class Room {
       const pos = positions[i % positions.length];
       const EClass = ENEMY_CLASS[type];
       if (!EClass) return;
-      const e = new EClass(scene, pos.x, pos.y);
+      const e = new EClass(scene, pos.x, pos.y, type);   // type をデータキーとして渡す
       this.enemies.push(e);
     });
   }

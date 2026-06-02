@@ -1,4 +1,4 @@
-import { ROOM_SEQUENCE, TYPE_TO_TEMPLATE, ROOM_TEMPLATES } from '../data/DungeonData.js';
+import { DUNGEONS, buildRoomTemplate } from '../data/DungeonData.js';
 import { Random } from '../utils/Random.js';
 import { Bus } from '../utils/EventBus.js';
 
@@ -8,26 +8,39 @@ class DungeonSystem {
     this.currentIndex = 0;
     this.rng = null;
     this.sessionRewards = [];
+    this.dungeonId = 'shubyori';
+    this.def = null;
+    this.endless = false;
+    this.depth = 0;
   }
 
-  generate(seed) {
+  // dungeonId 省略時は朱鳥居の迷宮
+  generate(dungeonId = 'shubyori', seed) {
+    this.dungeonId = dungeonId;
+    this.def = DUNGEONS[dungeonId] ?? DUNGEONS.shubyori;
+    this.endless = false;
+    this.depth = 0;
     this.rng = new Random(seed ?? Date.now());
-    this.rooms = ROOM_SEQUENCE.map((type, i) => {
-      const templateName = TYPE_TO_TEMPLATE[type](this.rng);
-      const template = ROOM_TEMPLATES[templateName];
-      return {
-        id: i,
-        type,
-        templateName,
-        template,
-        cleared: type === 'start' || type === 'end' || type === 'heal' || type === 'treasure',
-        doorsLocked: type === 'battle' || type === 'puzzle' || type === 'boss',
-      };
-    });
+
+    this.rooms = this.def.sequence.map((type, i) => ({
+      id: i,
+      type,
+      template: buildRoomTemplate(type, this.def, this.rng),
+      cleared: type === 'start' || type === 'end' || type === 'heal' || type === 'treasure',
+      doorsLocked: type === 'battle' || type === 'puzzle' || type === 'boss',
+    }));
     this.currentIndex = 0;
     this.sessionRewards = [];
     Bus.emit('dungeon:generated', this.rooms);
   }
+
+  getDef() { return this.def; }
+  getDungeonName() { return this.def?.name ?? ''; }
+  getRelic() { return this.def?.bossRewards?.relic; }
+  getMamori() { return this.def?.bossRewards?.mamori; }
+  getClearFlag() { return this.def?.bossRewards?.clearFlag; }
+  getBossDialogueKey() { return this.def?.bossDialogueKey; }
+  getHintKey(type) { return this.def?.hints?.[type] ?? null; }
 
   getCurrentRoom() { return this.rooms[this.currentIndex]; }
   getTotalRooms() { return this.rooms.length; }

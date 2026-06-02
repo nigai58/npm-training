@@ -2,8 +2,8 @@ import { BaseEnemy } from './BaseEnemy.js';
 import { ENEMY_DATA } from '../../data/EnemyData.js';
 
 export class Kooni extends BaseEnemy {
-  constructor(scene, x, y) {
-    super(scene, x, y, ENEMY_DATA.kooni);
+  constructor(scene, x, y, dataKey = 'kooni') {
+    super(scene, x, y, ENEMY_DATA[dataKey]);
     this.attackCooldown = 0;
 
     this.initFSM('idle', {

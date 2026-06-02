@@ -34,14 +34,22 @@ export const DIALOGUES = {
       text: 'もののけたち、鎮められたか？\nよかった。あの子たちも、ほんとうはここに居たくなかったはずだから' },
   ],
 
-  // クリア後に町へ戻ったとき
+  // クリア後に町へ戻ったとき（神具1つ目）
   kohaku_town_cleared: [
     { speaker: 'こはく', portrait: 'kohaku',
-      text: '見て！神社の灯籠に火が戻った……！\nきみが荒れ狛犬を鎮めてくれたおかげだ' },
+      text: '見て！神社の灯籠に火が戻った……！\nきみがもののけを鎮めてくれたおかげだ' },
     { speaker: 'こはく', portrait: 'kohaku',
-      text: '星灯りの神具は、ぜんぶで五つ。\n火の勾玉はそのひとつめ。まだ旅は続くぞ' },
+      text: '星灯りの神具は、ぜんぶで五つ。\nまだ旅は続くぞ' },
     { speaker: 'こはく', portrait: 'kohaku',
       text: '勾玉や神具の欠片は、札屋や鍛冶屋で力にできる。\n少し休んだら、また次の異界へ行こう' },
+  ],
+
+  // 迷い宿クリア後に町へ戻ったとき（神具2つ目・新ダンジョン解放）
+  kohaku_town_cleared2: [
+    { speaker: 'こはく', portrait: 'kohaku',
+      text: '神具がふたつ揃った……！\n川の水も、少し澄んできた気がする' },
+    { speaker: 'こはく', portrait: 'kohaku',
+      text: 'まだ見ぬ異界が、町のあちこちで口を開けてる。\n駅、山道、夜市……次はどこへ行こうか' },
   ],
   kohaku_before_dungeon: [
     { speaker: 'こはく', portrait: 'kohaku',
@@ -114,7 +122,7 @@ export const DIALOGUES = {
       text: '荒れ狛犬……本当はずっとこの神社を守ってたんだ。\n鎮めてやって。元の姿に戻してあげて' },
   ],
 
-  // ─── ボス撃破後 ────────────────────────────────
+  // ─── ボス撃破後（朱鳥居の迷宮）────────────────────
   boss_defeated: [
     { speaker: 'こはく', portrait: 'kohaku',
       text: '……モヤが晴れた。\n荒れ狛犬が、元の姿に戻っていく' },
@@ -124,5 +132,29 @@ export const DIALOGUES = {
       text: 'これを持って行きなさい。星灯りの神具のかけら……\n火の勾玉だ。町へ戻る道を照らしてくれるはず' },
     { speaker: 'こはく', portrait: 'kohaku',
       text: '神具の欠片……！\nこれを集めれば、神具が元に戻るかもしれない！' },
+  ],
+
+  // ─── 迷い宿 ──────────────────────────────────
+  kohaku_mayoiyado_start: [
+    { speaker: 'こはく', portrait: 'kohaku',
+      text: 'ここが迷い宿……。\n廊下がどこまでも続いてる。はぐれるなよ' },
+    { speaker: 'こはく', portrait: 'kohaku',
+      text: '水の匂いがする。鏡に映るものには気をつけろ' },
+  ],
+  kohaku_mayoiyado_boss: [
+    { speaker: 'こはく', portrait: 'kohaku',
+      text: 'この奥に、宿を惑わせてる「水鏡の主」がいる' },
+    { speaker: 'こはく', portrait: 'kohaku',
+      text: '水鏡の主・鏡花……。\n映した者の姿を真似るらしい。落ち着いていけ！' },
+  ],
+  boss_defeated_kyouka: [
+    { speaker: 'こはく', portrait: 'kohaku',
+      text: '……水鏡が、静かになっていく' },
+    { speaker: '鏡花', portrait: 'komainu',
+      text: '…………わたくしは、ただ誰かを映していたかっただけ。\nありがとう、本当の自分を思い出せました' },
+    { speaker: '鏡花', portrait: 'komainu',
+      text: 'これを。星灯りの神具のひとつ――水の鏡。\nまことを映す力が、あなたを助けるでしょう' },
+    { speaker: 'こはく', portrait: 'kohaku',
+      text: '神具がふたつ目だ……！\n星見町の朝が、また少し近づいたな' },
   ],
 };

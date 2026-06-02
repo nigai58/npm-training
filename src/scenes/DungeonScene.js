@@ -15,19 +15,21 @@ import { BlessingSystem } from '../systems/BlessingSystem.js';
 import { BlessingChoiceUI } from '../ui/BlessingChoiceUI.js';
 import { bindBus } from '../utils/SceneBus.js';
 
-const ROOM_HINTS = {
-  start:    'kohaku_dungeon_start',
+// 汎用ヒント（start/boss はダンジョン毎に DS.getHintKey で上書き）
+const GENERIC_HINTS = {
   battle:   'kohaku_dungeon_battle',
   treasure: 'kohaku_dungeon_treasure',
   puzzle:   'kohaku_dungeon_puzzle',
   heal:     'kohaku_dungeon_heal',
-  boss:     'kohaku_dungeon_boss',
 };
 
 const ENEMY_REWARD_KEY = {
   '小鬼': 'enemy_kooni',
   '狐火': 'enemy_kitsunebi',
   '動く灯籠': 'enemy_lantern',
+  '唐傘お化け': 'enemy_kooni',
+  '雨降り小僧': 'enemy_kitsunebi',
+  '水玉坊主': 'enemy_lantern',
 };
 
 export class DungeonScene extends Phaser.Scene {
@@ -95,7 +97,7 @@ export class DungeonScene extends Phaser.Scene {
 
   _showRoomHint(type) {
     if (this._hintShownRooms.has(type)) return;
-    const key = ROOM_HINTS[type];
+    const key = DS.getHintKey(type) ?? GENERIC_HINTS[type];
     if (!key || !DIALOGUES[key]) return;
     this._hintShownRooms.add(type);
     this._dlg.show(DIALOGUES[key]);
@@ -151,7 +153,7 @@ export class DungeonScene extends Phaser.Scene {
       this.cameras.main.shake(280, 0.01);
     });
     bindBus(this, 'boss:howl', ({ x, y, radius, stunDuration }) => this._handleHowl(x, y, radius, stunDuration));
-    bindBus(this, 'boss:phase2', () => this._showPhase2Notice());
+    bindBus(this, 'boss:phase2', (boss) => this._showPhase2Notice(boss));
     bindBus(this, 'player:swing', (info) => this._resolveSwing(info));
     bindBus(this, 'room:cleared', (room) => this._onRoomCleared(room));
   }
@@ -275,11 +277,12 @@ export class DungeonScene extends Phaser.Scene {
     }
   }
 
-  _showPhase2Notice() {
+  _showPhase2Notice(boss) {
     this.cameras.main.flash(400, 255, 80, 80);
     const W = this.scale.width, H = this.scale.height;
-    const t = this.add.text(W / 2, H / 2 - 60, '荒れ狛犬　覚醒！', {
-      fontSize: '30px', color: '#ff4444', fontFamily: 'serif',
+    const name = boss?.enemyData?.label ?? 'ボス';
+    const t = this.add.text(W / 2, H / 2 - 60, `${name}　覚醒！`, {
+      fontSize: '28px', color: '#ff4444', fontFamily: 'serif',
       stroke: '#000', strokeThickness: 5,
     }).setScrollFactor(0).setDepth(300).setOrigin(0.5);
     const s = this.add.text(W / 2, H / 2 - 20, 'こはく「黒いモヤが濃くなってる……！」', {
@@ -309,16 +312,25 @@ export class DungeonScene extends Phaser.Scene {
     this._bossDefeated = true;
     this.cameras.main.flash(500, 255, 220, 100);
 
+    const dialogueKey = DS.getBossDialogueKey() ?? 'boss_defeated';
+    const relic = DS.getRelic();
+    const mamori = DS.getMamori();
+    const clearFlag = DS.getClearFlag();
+
     this.time.delayedCall(600, () => {
-      this._dlg.show(DIALOGUES.boss_defeated, () => {
-        const drop = RewardSystem.generateDrop('chest_boss');
-        drop.magatama = Run.applyMagatama(drop.magatama);   // 狐の加護
-        RewardSystem.collect(drop);
+      this._dlg.show(DIALOGUES[dialogueKey] ?? DIALOGUES.boss_defeated, () => {
+        const base = RewardSystem.generateDrop('chest_boss');
+        const reward = {
+          magatama: Run.applyMagatama(base.magatama),   // 狐の加護
+          items: [relic, mamori].filter(Boolean),
+          flags: clearFlag ? [clearFlag] : [],
+        };
+        RewardSystem.collect(reward);
         DS.clearRoom();
         this._currentRoom.unlockDoors();
 
         const W = this._currentRoom.template.width;
-        RewardPopup.show(this, W / 2, 80, '火の勾玉を受け取った！');
+        RewardPopup.show(this, W / 2, 80, `${relic?.label ?? '神具'} を受け取った！`);
         this.time.delayedCall(1400, () => this._transitionToNextRoom());
       });
     });

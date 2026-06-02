@@ -3,8 +3,8 @@ import { ENEMY_DATA } from '../../data/EnemyData.js';
 import { Bus } from '../../utils/EventBus.js';
 
 export class MovingLantern extends BaseEnemy {
-  constructor(scene, x, y) {
-    super(scene, x, y, ENEMY_DATA.lantern);
+  constructor(scene, x, y, dataKey = 'lantern') {
+    super(scene, x, y, ENEMY_DATA[dataKey]);
     this.aoeCooldown = 0;
 
     this.initFSM('idle', {

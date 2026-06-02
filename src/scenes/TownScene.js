@@ -36,7 +36,11 @@ export class TownScene extends Phaser.Scene {
   }
 
   _playEntrance() {
-    if (this._cleared && this._returning) {
+    if (this._returning && PDS.hasFlag('dungeon2_cleared')) {
+      this._dlg.show(DIALOGUES.kohaku_town_cleared2);
+      return;
+    }
+    if (this._returning && this._cleared) {
       this._dlg.show(DIALOGUES.kohaku_town_cleared);
       return;
     }
@@ -86,17 +90,15 @@ export class TownScene extends Phaser.Scene {
     this._addLantern(sx - 50, sy + 20);
     this._addLantern(sx + 50, sy + 20);
 
-    // 鳥居ゲート (上中央)
-    this._drawTorii(W / 2, 90, 1.4, false);
-    this.add.text(W / 2, 130, '朱鳥居の迷宮', { fontSize: '12px', color: '#ffaaaa', fontFamily: 'serif' })
-      .setDepth(5).setOrigin(0.5);
+    // 旅館 (左・中央寄り)：迷い宿の入口
+    this._addBuilding(150, 330, 170, 110, 0x101822, '旅館', '♨ 旅館');
 
     // 川 (左下)
-    this.add.rectangle(80, H - 150, 80, 160, 0x0a2030, 0.8).setDepth(1);
+    this.add.rectangle(80, H - 120, 80, 130, 0x0a2030, 0.8).setDepth(1);
     for (let i = 0; i < 5; i++) {
-      this.add.rectangle(55 + i * 12, H - 140 + i * 8, 30, 6, 0x1a4060, 0.5).setDepth(2).setRotation(0.1);
+      this.add.rectangle(55 + i * 12, H - 120 + i * 8, 30, 6, 0x1a4060, 0.5).setDepth(2).setRotation(0.1);
     }
-    this.add.text(78, H - 160, '星見川', { fontSize: '11px', color: '#88bbcc', fontFamily: 'serif' }).setDepth(3).setOrigin(0.5);
+    this.add.text(78, H - 60, '星見川', { fontSize: '11px', color: '#88bbcc', fontFamily: 'serif' }).setDepth(3).setOrigin(0.5);
   }
 
   _addBuilding(x, y, w, h, bg, key, label) {
@@ -201,11 +203,28 @@ export class TownScene extends Phaser.Scene {
   }
 
   _setupDungeonGate() {
-    this._gate = { x: W / 2, y: 75, w: 70, h: 40 };
-    this._gateHintText = this.add.text(W / 2, 115, '', {
+    // 各ダンジョンの入口ゲート。unlockFlag があり未達成なら施錠。
+    this._gates = [
+      { id: 'shubyori',  name: '朱鳥居の迷宮', x: W / 2, y: 90, w: 80, h: 50, unlockFlag: null },
+      { id: 'mayoiyado', name: '迷い宿',       x: 150,   y: 270, w: 80, h: 50, unlockFlag: 'dungeon1_cleared' },
+    ];
+    this._gates.forEach(g => {
+      const unlocked = !g.unlockFlag || PDS.hasFlag(g.unlockFlag);
+      this._drawTorii(g.x, g.y, 1.2, false);
+      if (!unlocked) {
+        // 施錠中は霧で覆う
+        this.add.rectangle(g.x, g.y, 90, 90, 0x223344, 0.55).setDepth(6);
+        this.add.text(g.x, g.y, '🌫', { fontSize: '28px' }).setDepth(7).setOrigin(0.5);
+      }
+      this.add.text(g.x, g.y + 44, g.name, {
+        fontSize: '12px', color: unlocked ? '#ffaaaa' : '#778899', fontFamily: 'serif',
+      }).setDepth(7).setOrigin(0.5);
+    });
+
+    this._gateHintText = this.add.text(W / 2, 150, '', {
       fontSize: '13px', color: '#ffcccc', backgroundColor: '#00000088',
       padding: { x: 6, y: 3 }, fontFamily: 'serif',
-    }).setDepth(20).setOrigin(0.5).setVisible(false);
+    }).setDepth(30).setOrigin(0.5).setVisible(false);
   }
 
   _buildUI() {
@@ -263,14 +282,27 @@ export class TownScene extends Phaser.Scene {
 
     const px = p.x, py = p.y;
 
-    const inGate = Math.abs(px - this._gate.x) < this._gate.w / 2 && Math.abs(py - this._gate.y) < this._gate.h + 20;
-    this._gateHintText.setVisible(inGate);
-    if (inGate) this._gateHintText.setText('[E] まよい町へ入る');
+    const gate = this._gateAt(px, py);
+    this._gateHintText.setVisible(!!gate);
+    if (gate) {
+      const unlocked = !gate.unlockFlag || PDS.hasFlag(gate.unlockFlag);
+      this._gateHintText.setPosition(gate.x, gate.y + 70);
+      this._gateHintText.setText(unlocked ? `[E] ${gate.name}へ入る` : '霧が深く、まだ入れない…');
+    }
 
     if (Phaser.Input.Keyboard.JustDown(keys.E)) {
-      if (inGate) { this._enterDungeon(); return; }
+      if (gate) {
+        const unlocked = !gate.unlockFlag || PDS.hasFlag(gate.unlockFlag);
+        if (unlocked) this._enterDungeon(gate.id);
+        return;
+      }
       this._tryInteract(px, py);
     }
+  }
+
+  _gateAt(px, py) {
+    return this._gates.find(g =>
+      Math.abs(px - g.x) < g.w / 2 + 10 && Math.abs(py - g.y) < g.h / 2 + 20);
   }
 
   _tryInteract(px, py) {
@@ -283,9 +315,9 @@ export class TownScene extends Phaser.Scene {
     }
   }
 
-  _enterDungeon() {
+  _enterDungeon(dungeonId = 'shubyori') {
     this._dlg.show(DIALOGUES.kohaku_before_dungeon, () => {
-      DS.generate();
+      DS.generate(dungeonId);
       OS.reset();
       BlessingSystem.reset();   // ご利益を初期化
       PDS.startRun();           // HP全回復・ランボーナス初期化

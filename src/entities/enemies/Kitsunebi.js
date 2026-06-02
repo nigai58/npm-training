@@ -3,8 +3,8 @@ import { ENEMY_DATA } from '../../data/EnemyData.js';
 import { Bus } from '../../utils/EventBus.js';
 
 export class Kitsunebi extends BaseEnemy {
-  constructor(scene, x, y) {
-    super(scene, x, y, ENEMY_DATA.kitsunebi);
+  constructor(scene, x, y, dataKey = 'kitsunebi') {
+    super(scene, x, y, ENEMY_DATA[dataKey]);
     this.shotCooldown = 0;
 
     this.initFSM('idle', {
@@ -36,7 +36,7 @@ export class Kitsunebi extends BaseEnemy {
             Bus.emit('ofuda:fireProjectile', {
               x: this.x, y: this.y,
               vx: dir.x * 200, vy: dir.y * 200,
-              data: { damage: this.damage, color: 0xff6600, radius: 8 },
+              data: { damage: this.damage, color: this.enemyData.projColor ?? 0xff6600, radius: 8 },
               owner: 'enemy',
             });
           }
