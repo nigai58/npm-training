@@ -37,6 +37,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this._hitbox = scene.add.rectangle(0, 0, 1, 1, 0xffff00, 0).setDepth(11);
     scene.physics.add.existing(this._hitbox, false);
 
+    // プレイヤーを目立たせる：水色の体＋常時光るリング＋向きを示す矢印
+    this.setTint(0x66ddff);
+    this._ring = scene.add.circle(x, y, 22, 0x66ddff).setStrokeStyle(2, 0x88eeff, 0.9).setFillStyle(0, 0).setDepth(9);
+    this._marker = scene.add.triangle(x, y, 0, -10, -7, 5, 7, 5, 0xffffff, 0.95).setDepth(12);
+    scene.tweens.add({ targets: this._ring, scale: { from: 1, to: 1.25 }, alpha: { from: 0.9, to: 0.3 },
+      duration: 700, yoyo: true, repeat: -1 });
+
     this._comboFsm = new StateMachine('idle', {
       idle: {},
       swing1: { onEnter() { this._doSwing(0); } },
@@ -112,7 +119,17 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.scene.time.delayedCall(cd, () => { if (this.active) this.dodgeCooldown = 0; });
   }
 
+  _syncMarker() {
+    if (this._ring) this._ring.setPosition(this.x, this.y);
+    if (this._marker) {
+      const d = 30;
+      this._marker.setPosition(this.x + Math.cos(this.facingAngle) * d, this.y + Math.sin(this.facingAngle) * d);
+      this._marker.setRotation(this.facingAngle + Math.PI / 2);
+    }
+  }
+
   update(cursors, keys, delta) {
+    this._syncMarker();
     if (this.dodging) return;
     if (this.stunned) {
       this.body.setVelocity(0, 0);
@@ -152,7 +169,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (this.dodging) { this.setTint(0x88ffff); return; }
     if (this.guarding) { this.setTint(0xffff88); return; }
     if (this._comboFsm.current !== 'idle') { this.setTint(0xff8844); return; }
-    this.clearTint();
+    this.setTint(0x66ddff);
   }
 
   receiveDamage(amount) {
@@ -163,5 +180,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.invincible = true;
     this.scene.time.delayedCall(800, () => { if (this.active) this.invincible = false; });
     this.scene.cameras.main.shake(120, 0.006);
+  }
+
+  destroy(fromScene) {
+    this._ring?.destroy();
+    this._marker?.destroy();
+    this._hitbox?.destroy();
+    super.destroy(fromScene);
   }
 }

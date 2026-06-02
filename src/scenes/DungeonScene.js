@@ -45,6 +45,11 @@ export class DungeonScene extends Phaser.Scene {
     this._wallCollider = null;
 
     this._dlg = new DialogueBox(this);
+    this._objText = this.add.text(this.scale.width / 2, 46, '', {
+      fontSize: '15px', color: '#ffe08a', fontFamily: 'serif',
+      stroke: '#000', strokeThickness: 3,
+    }).setScrollFactor(0).setDepth(100).setOrigin(0.5, 0);
+
     this._setupPlayer();
     this._loadRoom(DS.getCurrentIndex(), true);
     this._setupInput();
@@ -86,6 +91,29 @@ export class DungeonScene extends Phaser.Scene {
 
     if (roomDef.type === 'heal') this._doHeal(W, H);
     if (roomDef.type === 'puzzle') this._showPuzzleNote(roomDef.template.puzzleNote, W, H);
+    this._refreshObjective();
+  }
+
+  // 画面上部に「今やること」を常時表示する
+  _refreshObjective() {
+    if (!this._objText) return;
+    const def = DS.getCurrentRoom();
+    const alive = this._enemies.filter(e => e.active && e.hp > 0).length;
+    let msg;
+    switch (def.type) {
+      case 'battle':
+        msg = alive > 0 ? `🗡 もののけを鎮めろ（残り ${alive}）` : '→ 開いた扉へ進め'; break;
+      case 'boss':
+        msg = alive > 0 ? '👹 ボスを鎮めろ！' : '→ 扉へ進め'; break;
+      case 'treasure': msg = '宝箱に触れて、扉へ進め'; break;
+      case 'puzzle':
+        msg = alive > 0 ? '🗡 敵を倒し、封印札(C)で結界を解け' : '封印札(C)で結界を解け'; break;
+      case 'heal':  msg = '✚ 回復した　→ 扉へ進め'; break;
+      case 'start': msg = '→ 扉（上か下）へ進め'; break;
+      case 'end':   msg = '→ 鳥居をくぐってクリア'; break;
+      default:      msg = '→ 扉へ進め';
+    }
+    this._objText.setText(msg);
   }
 
   _setupPlayer() {
@@ -165,6 +193,7 @@ export class DungeonScene extends Phaser.Scene {
       DS.clearRoom();
       RewardPopup.show(this, room.template.width / 2, 60, '扉が開いた');
     }
+    this._refreshObjective();
     // 戦闘部屋クリアでご利益を1つ選ばせる
     if (def.type === 'battle') {
       this.time.delayedCall(400, () => this._offerBlessing());
@@ -202,6 +231,7 @@ export class DungeonScene extends Phaser.Scene {
     this._vfxCircle(e.x, e.y, (e.enemyData?.size ?? 28) * 0.8, 0xddccff, 300);
     e.die();
 
+    this._refreshObjective();
     this._checkRoomClear();
   }
 
