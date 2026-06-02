@@ -164,31 +164,38 @@ export class Room {
     this.cleared = true;
   }
 
+  // クリア確定を一度だけ通知する。扉解放・DS への反映は購読側で行う
+  markCleared() {
+    if (this._clearedEmitted) return;
+    this._clearedEmitted = true;
+    this.unlockDoors();
+    Bus.emit('room:cleared', this);
+  }
+
   sealBarrier() {
     this._barriers.forEach(b => {
       b.setVisible(false);
       b.sealed = false;
       this.walls.remove(b, false, false);
     });
-    if (this._barriers.length > 0 && !this.cleared) {
-      this.checkClear();
-    }
+    if (this._barriers.length > 0) this.checkClear();
   }
 
   checkClear() {
     const allDead = this.enemies.every(e => !e.active || e.hp <= 0);
     const allBarriersOpen = this._barriers.every(b => !b.sealed);
-    if (allDead && allBarriersOpen) {
-      this.unlockDoors();
-      Bus.emit('room:cleared', this);
-    }
+    if (allDead && allBarriersOpen) this.markCleared();
   }
 
   destroy() {
     this.floor?.destroy();
-    this.enemies.forEach(e => { if (e.active) { e._hpBar?.destroy(); e._hpBarBg?.destroy(); e.destroy(); } });
+    this.enemies.forEach(e => {
+      e._hpBar?.destroy();
+      e._hpBarBg?.destroy();
+      if (e.active) e.destroy();
+    });
     this.gimmicks.forEach(g => g.destroy?.());
-    this.walls?.getChildren().forEach(w => w.destroy());
+    this.walls?.getChildren().slice().forEach(w => w.destroy());
     Object.values(this.doors).forEach(d => d.rect?.destroy());
   }
 }

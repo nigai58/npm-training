@@ -10,7 +10,7 @@ import { OS } from '../systems/OfudaSystem.js';
 import { PDS } from '../systems/PlayerDataSystem.js';
 import { RewardSystem } from '../systems/RewardSystem.js';
 import { CombatSystem } from '../systems/CombatSystem.js';
-import { Bus } from '../utils/EventBus.js';
+import { bindBus } from '../utils/SceneBus.js';
 
 const ROOM_HINTS = {
   start:    'kohaku_dungeon_start',
@@ -19,6 +19,12 @@ const ROOM_HINTS = {
   puzzle:   'kohaku_dungeon_puzzle',
   heal:     'kohaku_dungeon_heal',
   boss:     'kohaku_dungeon_boss',
+};
+
+const ENEMY_REWARD_KEY = {
+  '小鬼': 'enemy_kooni',
+  '狐火': 'enemy_kitsunebi',
+  '動く灯籠': 'enemy_lantern',
 };
 
 export class DungeonScene extends Phaser.Scene {
@@ -31,23 +37,29 @@ export class DungeonScene extends Phaser.Scene {
     this._enemies = [];
     this._hintShownRooms = new Set();
     this._bossDefeated = false;
+    this._wallCollider = null;
 
-    this._loadRoom(DS.getCurrentIndex());
+    this._dlg = new DialogueBox(this);
     this._setupPlayer();
+    this._loadRoom(DS.getCurrentIndex(), true);
     this._setupInput();
     this._setupBusListeners();
 
     this.hud = new HUD(this);
     this.hud.updateRoom(DS.getCurrentIndex(), DS.getTotalRooms());
-    this._dlg = new DialogueBox(this);
 
     this.cameras.main.setBackgroundColor(0x060410);
     this.cameras.main.fadeIn(400);
 
+    // shutdown メソッドは Phaser が自動で呼ばないため明示的に配線する
+    this.events.once('shutdown', () => this._cleanup());
+
     this.time.delayedCall(600, () => this._showRoomHint(DS.getCurrentRoom().type));
   }
 
-  _loadRoom(index) {
+  // ─── 部屋管理 ───────────────────────────────
+  _loadRoom(index, isFirst = false) {
+    if (this._wallCollider) { this._wallCollider.destroy(); this._wallCollider = null; }
     this._currentRoom?.destroy();
     this._projectiles.forEach(p => p.active && p.destroy());
     this._projectiles = [];
@@ -60,8 +72,22 @@ export class DungeonScene extends Phaser.Scene {
 
     const W = roomDef.template.width, H = roomDef.template.height;
 
+    // プレイヤー配置：最初の部屋は中央下、以降は北扉から入ってくるので下端
+    this._player.setPosition(W / 2, isFirst ? H * 0.78 : H - 110);
+    this._player.body.setVelocity(0, 0);
+    this._wallCollider = this.physics.add.collider(this._player, room.walls);
+
+    this.cameras.main.setBounds(0, 0, W, H);
+
     if (roomDef.type === 'heal') this._doHeal(W, H);
     if (roomDef.type === 'puzzle') this._showPuzzleNote(roomDef.template.puzzleNote, W, H);
+  }
+
+  _setupPlayer() {
+    const roomDef = DS.getCurrentRoom();
+    const W = roomDef.template.width, H = roomDef.template.height;
+    this._player = new Player(this, W / 2, H * 0.78);
+    this.cameras.main.startFollow(this._player, true, 0.1, 0.1);
   }
 
   _showRoomHint(type) {
@@ -84,99 +110,117 @@ export class DungeonScene extends Phaser.Scene {
       fontSize: '15px', color: '#ffddff', fontFamily: 'serif',
       backgroundColor: '#00000099', padding: { x: 8, y: 4 },
     }).setDepth(50).setOrigin(0.5);
-    this.time.delayedCall(4000, () => t.destroy());
+    this.time.delayedCall(4000, () => t.active && t.destroy());
   }
 
-  _setupPlayer() {
-    const roomDef = DS.getCurrentRoom();
-    const W = roomDef.template.width, H = roomDef.template.height;
-    this._player = new Player(this, W / 2, H * 0.78);
-
-    this.physics.add.collider(this._player, this._currentRoom.walls);
-
-    this._player._hitbox = this.add.rectangle(0, 0, 1, 1, 0xffff00, 0).setDepth(11);
-    this.physics.add.existing(this._player._hitbox, false);
-
-    this.cameras.main.setBounds(0, 0, W, H);
-    this.cameras.main.startFollow(this._player, true, 0.1, 0.1);
-  }
-
+  // ─── 入力 ─────────────────────────────────
   _setupInput() {
     this.cursors = this.input.keyboard.createCursorKeys();
     this.keys = this.input.keyboard.addKeys('W,A,S,D,E,Z,X,C,V,SPACE,SHIFT');
 
+    // scene の keyboard プラグインに紐づくため shutdown で自動解除される
     this.input.keyboard.on('keydown-Z', () => { if (!this._dlg.isVisible()) this._useOfuda('fire'); });
     this.input.keyboard.on('keydown-X', () => { if (!this._dlg.isVisible()) this._useOfuda('wind'); });
     this.input.keyboard.on('keydown-C', () => { if (!this._dlg.isVisible()) this._useOfuda('seal'); });
   }
 
   _useOfuda(id) {
+    if (this._transitioning || !this._player?.active) return;
     OS.use(id, this._player, this, this._enemies.filter(e => e.active));
   }
 
+  // ─── Bus リスナー（shutdown で自動解除）──────────
   _setupBusListeners() {
-    Bus.on('ofuda:fireProjectile', ({ x, y, vx, vy, data, owner }) =>
+    bindBus(this, 'ofuda:fireProjectile', ({ x, y, vx, vy, data, owner }) =>
       this._spawnProjectile(x, y, vx, vy, data, owner));
+    bindBus(this, 'ofuda:windBlast', ({ x, y, radius }) => this._vfxCircle(x, y, radius, 0x88ddff, 320));
+    bindBus(this, 'ofuda:sealBlast', ({ x, y, radius }) => this._vfxCircle(x, y, radius, 0xaa88ff, 420));
+    bindBus(this, 'gimmick:seal', () => this._currentRoom?.sealBarrier());
 
-    Bus.on('ofuda:windBlast',  ({ x, y, radius }) => this._vfxCircle(x, y, radius, 0x88ddff, 320));
-    Bus.on('ofuda:sealBlast',  ({ x, y, radius }) => this._vfxCircle(x, y, radius, 0xaa88ff, 420));
-
-    Bus.on('gimmick:seal', () => this._currentRoom?.sealBarrier());
-
-    Bus.on('entity:died', (e) => {
+    bindBus(this, 'entity:died', (e) => {
       if (e === this._player) { this._onPlayerDead(); return; }
       this._onEnemyDied(e);
     });
 
-    Bus.on('enemy:aoe',  ({ x, y, radius, damage }) => this._handleAoe(x, y, radius, damage, 0xddaa00));
-    Bus.on('boss:slam',  ({ x, y, radius, damage }) => {
+    bindBus(this, 'enemy:aoe', ({ x, y, radius, damage }) => this._handleAoe(x, y, radius, damage, 0xddaa00));
+    bindBus(this, 'boss:slam', ({ x, y, radius, damage }) => {
       this._handleAoe(x, y, radius, damage, 0xff4400);
       this.cameras.main.shake(280, 0.01);
     });
-    Bus.on('boss:howl',  ({ x, y, radius, stunDuration }) => this._handleHowl(x, y, radius, stunDuration));
-    Bus.on('boss:phase2', () => this._showPhase2Notice());
-    Bus.on('player:swing', (info) => this._resolveSwing(info));
-    Bus.on('player:dead', () => this._onPlayerDead());
+    bindBus(this, 'boss:howl', ({ x, y, radius, stunDuration }) => this._handleHowl(x, y, radius, stunDuration));
+    bindBus(this, 'boss:phase2', () => this._showPhase2Notice());
+    bindBus(this, 'player:swing', (info) => this._resolveSwing(info));
+    bindBus(this, 'room:cleared', (room) => this._onRoomCleared(room));
+  }
+
+  _onRoomCleared(room) {
+    if (room !== this._currentRoom) return;
+    const def = DS.getCurrentRoom();
+    if (def.doorsLocked) {
+      DS.clearRoom();
+      RewardPopup.show(this, room.template.width / 2, 60, '扉が開いた');
+    }
   }
 
   _onEnemyDied(e) {
     this._enemies = this._enemies.filter(en => en !== e);
 
-    const labelMap = { '小鬼': 'enemy_kooni', '狐火': 'enemy_kitsunebi', '動く灯籠': 'enemy_lantern' };
-    const key = labelMap[e.enemyData?.label] ?? 'enemy_kooni';
-    const drop = RewardSystem.generateDrop(key);
-    if (drop?.magatama > 0) {
-      RewardPopup.show(this, e.x, e.y - 20, `勾玉 +${drop.magatama}`);
-      RewardSystem.collect({ magatama: drop.magatama });
+    const key = ENEMY_REWARD_KEY[e.enemyData?.label];
+    if (key) {
+      const drop = RewardSystem.generateDrop(key);
+      if (drop?.magatama > 0) {
+        RewardPopup.show(this, e.x, e.y - 20, `勾玉 +${drop.magatama}`);
+        RewardSystem.collect({ magatama: drop.magatama });
+      }
     }
     RewardPopup.show(this, e.x, e.y, `${e.enemyData?.label ?? 'もののけ'}を鎮めた`);
+    // 黒いモヤが晴れる演出 → スプライト破棄
+    this._vfxCircle(e.x, e.y, (e.enemyData?.size ?? 28) * 0.8, 0xddccff, 300);
+    e.die();
 
     this._checkRoomClear();
   }
 
+  // ─── 弾（手動当たり判定。コライダー累積を避ける）─────
   _spawnProjectile(x, y, vx, vy, data, owner) {
     const proj = new Projectile(this, x, y, vx, vy, data, owner);
     this._projectiles.push(proj);
-    const speed = Math.sqrt(vx * vx + vy * vy) || 1;
+  }
 
-    if (owner === 'player') {
-      this._enemies.forEach(e => {
-        if (!e.active) return;
-        this.physics.add.overlap(proj, e, () => {
-          if (!proj.active) return;
-          CombatSystem.takeDamage(e, data.damage, this._player);
-          CombatSystem.applyKnockback(e, vx / speed, vy / speed, 200);
-          this._vfxCircle(proj.x, proj.y, 22, data.color ?? 0xff4400, 200);
-          proj.destroy();
-        });
-      });
-    } else {
-      this.physics.add.overlap(proj, this._player, () => {
-        if (!proj.active) return;
-        this._player.receiveDamage(data.damage);
-        proj.destroy();
-      });
-    }
+  _updateProjectiles(delta) {
+    this._projectiles = this._projectiles.filter(pr => {
+      if (!pr.active) return false;
+      pr.update(delta);
+      if (!pr.active) return false;
+
+      if (pr.owner === 'player') {
+        for (const e of this._enemies) {
+          if (!e.active || e.hp <= 0) continue;
+          const hitR = (e.enemyData?.size ?? 28) * 0.5 + 8;
+          if (this._dist(pr, e) < hitR) {
+            CombatSystem.takeDamage(e, pr.projData.damage, this._player);
+            const v = pr.body.velocity, sp = v.length() || 1;
+            CombatSystem.applyKnockback(e, v.x / sp, v.y / sp, 200);
+            this._vfxCircle(pr.x, pr.y, 22, pr.projData.color ?? 0xff4400, 200);
+            pr.destroy();
+            return false;
+          }
+        }
+      } else {
+        const p = this._player;
+        if (p?.active && !p.invincible && this._dist(pr, p) < 20) {
+          p.receiveDamage(pr.projData.damage);
+          pr.destroy();
+          return false;
+        }
+      }
+      return true;
+    });
+  }
+
+  _dist(a, b) {
+    const dx = a.x - b.x, dy = a.y - b.y;
+    return Math.sqrt(dx * dx + dy * dy);
   }
 
   _resolveSwing({ x, y, w, h, damage, knockback, angle }) {
@@ -196,18 +240,14 @@ export class DungeonScene extends Phaser.Scene {
   _handleAoe(x, y, radius, damage, color) {
     this._vfxCircle(x, y, radius, color, 350);
     const p = this._player;
-    if (!p) return;
-    const dx = p.x - x, dy = p.y - y;
-    if (Math.sqrt(dx * dx + dy * dy) < radius) p.receiveDamage(damage);
+    if (p?.active && !p.invincible && this._dist({ x, y }, p) < radius) p.receiveDamage(damage);
   }
 
   _handleHowl(x, y, radius, stunDuration) {
     this._vfxCircle(x, y, radius, 0xffffaa, 500);
     this.cameras.main.shake(200, 0.006);
     const p = this._player;
-    if (!p) return;
-    const dx = p.x - x, dy = p.y - y;
-    if (Math.sqrt(dx * dx + dy * dy) < radius) {
+    if (p?.active && this._dist({ x, y }, p) < radius) {
       CombatSystem.applyStun(p, stunDuration);
       RewardPopup.show(this, p.x, p.y - 28, '⚡ 咆哮！ スタン！');
     }
@@ -223,25 +263,23 @@ export class DungeonScene extends Phaser.Scene {
     const s = this.add.text(W / 2, H / 2 - 20, 'こはく「黒いモヤが濃くなってる……！」', {
       fontSize: '14px', color: '#ffbbbb', fontFamily: 'serif',
     }).setScrollFactor(0).setDepth(300).setOrigin(0.5);
-    this.time.delayedCall(2200, () => { t.destroy(); s.destroy(); });
+    this.time.delayedCall(2200, () => { t.active && t.destroy(); s.active && s.destroy(); });
   }
 
+  // ─── 部屋クリア判定 ───────────────────────────
   _checkRoomClear() {
     const alive = this._enemies.filter(e => e.active && e.hp > 0);
     if (alive.length > 0) return;
 
     const room = DS.getCurrentRoom();
-    if (room.type === 'boss' && !this._bossDefeated) {
-      this._onBossDefeated(); return;
+    if (room.type === 'boss') {
+      if (!this._bossDefeated) this._onBossDefeated();
+      return;
     }
-    if (room.doorsLocked) {
-      DS.clearRoom();
-      this._currentRoom.unlockDoors();
-      RewardPopup.show(this, this._currentRoom.template.width / 2, 60, '扉が開いた');
-    }
-    if (room.type === 'puzzle') {
-      this._currentRoom.checkClear();
-    }
+    // battle / puzzle 共通: Room.checkClear() が全条件を満たせば
+    // 'room:cleared' を発火し、_onRoomCleared が扉と DS を更新する。
+    // puzzle 部屋は結界(封印札)が解除されるまで cleared にならない。
+    this._currentRoom.checkClear();
   }
 
   _onBossDefeated() {
@@ -258,10 +296,7 @@ export class DungeonScene extends Phaser.Scene {
 
         const W = this._currentRoom.template.width;
         RewardPopup.show(this, W / 2, 80, '火の勾玉を受け取った！');
-        this.time.delayedCall(1400, () => {
-          DS.advanceRoom();
-          this._transitionToRoom(DS.getCurrentIndex());
-        });
+        this.time.delayedCall(1400, () => this._transitionToNextRoom());
       });
     });
   }
@@ -270,11 +305,11 @@ export class DungeonScene extends Phaser.Scene {
     if (this._transitioning) return;
     this._transitioning = true;
     const W = this.scale.width, H = this.scale.height;
-    const t = this.add.text(W / 2, H / 2, 'きみは倒れてしまった……', {
+    this.add.text(W / 2, H / 2, 'きみは倒れてしまった……', {
       fontSize: '22px', color: '#cc8888', fontFamily: 'serif',
       stroke: '#000', strokeThickness: 4,
     }).setScrollFactor(0).setDepth(400).setOrigin(0.5);
-    const s = this.add.text(W / 2, H / 2 + 40, 'こはく「また一緒に行こう。今度は絶対大丈夫だから」', {
+    this.add.text(W / 2, H / 2 + 40, 'こはく「また一緒に行こう。今度は絶対大丈夫だから」', {
       fontSize: '13px', color: '#ffbbbb', fontFamily: 'serif',
     }).setScrollFactor(0).setDepth(400).setOrigin(0.5);
 
@@ -282,6 +317,7 @@ export class DungeonScene extends Phaser.Scene {
     this.time.delayedCall(1300, () => this.scene.start('Town', { returning: true }));
   }
 
+  // ─── VFX ─────────────────────────────────
   _vfxCircle(x, y, radius, color, duration) {
     const c = this.add.circle(x, y, radius, color, 0.30).setDepth(50);
     this.tweens.add({ targets: c, alpha: 0, scale: 1.3, duration, onComplete: () => c.destroy() });
@@ -292,6 +328,7 @@ export class DungeonScene extends Phaser.Scene {
     this.tweens.add({ targets: line, alpha: 0, scaleX: 0.1, duration: 180, onComplete: () => line.destroy() });
   }
 
+  // ─── メインループ ─────────────────────────────
   update(time, delta) {
     if (this._transitioning || this._dlg?.isVisible()) return;
     const p = this._player;
@@ -300,17 +337,12 @@ export class DungeonScene extends Phaser.Scene {
     p.update(this.cursors, this.keys, delta);
 
     if (Phaser.Input.Keyboard.JustDown(this.keys.SPACE)) p.tryAttack();
-    if (Phaser.Input.Keyboard.JustDown(this.keys.SHIFT))  p.tryDodge();
-    this.keys.V.isDown ? (p.guarding = true) : (p.guarding = false);
+    if (Phaser.Input.Keyboard.JustDown(this.keys.SHIFT)) p.tryDodge();
+    p.guarding = this.keys.V.isDown;
 
     this._enemies.forEach(e => e.active && e.update(delta, p));
-    this._projectiles = this._projectiles.filter(pr => {
-      if (!pr.active) return false;
-      pr.update(delta);
-      return pr.active;
-    });
+    this._updateProjectiles(delta);
 
-    this.physics.add.collider(p, this._currentRoom?.walls);
     this._checkDoorEntry();
     this.hud.update();
   }
@@ -320,54 +352,52 @@ export class DungeonScene extends Phaser.Scene {
     const room = this._currentRoom;
     if (!room || this._transitioning || this._dlg?.isVisible()) return;
 
-    Object.entries(room.doors).forEach(([dir, door]) => {
-      if (!door.open) return;
-      if (Phaser.Geom.Intersects.RectangleToRectangle(p.getBounds(), door.rect.getBounds())) {
-        const cur = DS.getCurrentRoom();
-        if (cur.type === 'end') {
-          this._transitioning = true;
-          this.cameras.main.fade(400, 0, 0, 0);
-          this.time.delayedCall(450, () => this.scene.start('DungeonClear'));
-          return;
-        }
-        if (cur.type === 'treasure' && !cur._chestOpened) {
-          cur._chestOpened = true;
-          const drop = RewardSystem.generateDrop('chest_treasure');
-          RewardSystem.collect(drop);
-          const W = room.template.width;
-          RewardPopup.show(this, W / 2, room.template.height / 2, `宝箱　勾玉×${drop.magatama}！`);
-          if (drop.items?.length) RewardPopup.show(this, W / 2, room.template.height / 2 + 36, drop.items[0].label + ' を入手！');
-        }
-        this._transitioning = true;
-        this.cameras.main.fade(300, 0, 0, 0);
-        this.time.delayedCall(320, () => this._transitionToRoom(DS.getCurrentIndex() + 1));
+    for (const door of Object.values(room.doors)) {
+      if (!door.open) continue;
+      if (!Phaser.Geom.Intersects.RectangleToRectangle(p.getBounds(), door.rect.getBounds())) continue;
+
+      const cur = DS.getCurrentRoom();
+      if (cur.type === 'end') {
+        this._beginTransition(400, () => this.scene.start('DungeonClear'));
+        return;
       }
-    });
+      if (cur.type === 'treasure' && !cur._chestOpened) {
+        cur._chestOpened = true;
+        const drop = RewardSystem.generateDrop('chest_treasure');
+        RewardSystem.collect(drop);
+        const W = room.template.width, H = room.template.height;
+        RewardPopup.show(this, W / 2, H / 2, `宝箱　勾玉×${drop.magatama}！`);
+        if (drop.items?.length) RewardPopup.show(this, W / 2, H / 2 + 36, `${drop.items[0].label} を入手！`);
+      }
+      this._beginTransition(300, () => this._transitionToNextRoom());
+      return;
+    }
   }
 
-  _transitionToRoom(nextIndex) {
-    if (nextIndex >= DS.getTotalRooms()) { this.scene.start('DungeonClear'); return; }
-    DS.advanceRoom();
+  _beginTransition(fadeMs, cb) {
+    this._transitioning = true;
+    this.cameras.main.fade(fadeMs, 0, 0, 0);
+    this.time.delayedCall(fadeMs + 20, cb);
+  }
+
+  _transitionToNextRoom() {
+    const advanced = DS.advanceRoom();
+    if (!advanced) { this.scene.start('DungeonClear'); return; }
+
+    const newRoom = DS.getCurrentRoom();
     this._loadRoom(DS.getCurrentIndex());
     this.hud.updateRoom(DS.getCurrentIndex(), DS.getTotalRooms());
 
-    const newRoom = DS.getCurrentRoom();
-    const W = newRoom.template.width, H = newRoom.template.height;
-    if (this._player) {
-      this._player.setPosition(W / 2, H - 110);
-      this.physics.add.collider(this._player, this._currentRoom.walls);
-      this.cameras.main.setBounds(0, 0, W, H);
-    }
     this._transitioning = false;
     this.cameras.main.fadeIn(300);
     this.time.delayedCall(400, () => this._showRoomHint(newRoom.type));
   }
 
-  shutdown() {
-    ['ofuda:fireProjectile','ofuda:windBlast','ofuda:sealBlast','gimmick:seal',
-     'entity:died','enemy:aoe','boss:slam','boss:howl','boss:phase2',
-     'player:swing','player:dead'].forEach(e => Bus.off(e));
+  _cleanup() {
     this.hud?.destroy();
     this._dlg?.destroy();
+    if (this._wallCollider) { this._wallCollider.destroy(); this._wallCollider = null; }
+    this._currentRoom?.destroy();
+    this._projectiles?.forEach(p => p.active && p.destroy());
   }
 }

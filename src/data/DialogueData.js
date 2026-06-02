@@ -33,6 +33,16 @@ export const DIALOGUES = {
     { speaker: 'こはく', portrait: 'kohaku',
       text: 'もののけたち、鎮められたか？\nよかった。あの子たちも、ほんとうはここに居たくなかったはずだから' },
   ],
+
+  // クリア後に町へ戻ったとき
+  kohaku_town_cleared: [
+    { speaker: 'こはく', portrait: 'kohaku',
+      text: '見て！神社の灯籠に火が戻った……！\nきみが荒れ狛犬を鎮めてくれたおかげだ' },
+    { speaker: 'こはく', portrait: 'kohaku',
+      text: '星灯りの神具は、ぜんぶで五つ。\n火の勾玉はそのひとつめ。まだ旅は続くぞ' },
+    { speaker: 'こはく', portrait: 'kohaku',
+      text: '勾玉や神具の欠片は、札屋や鍛冶屋で力にできる。\n少し休んだら、また次の異界へ行こう' },
+  ],
   kohaku_before_dungeon: [
     { speaker: 'こはく', portrait: 'kohaku',
       text: 'この鳥居の向こうがまよい町だ。\n気をつけろよ……って、わしも一緒に行くけどな！' },

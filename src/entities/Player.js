@@ -3,6 +3,7 @@ import { WEAPON_DATA } from '../data/WeaponData.js';
 import { CombatSystem } from '../systems/CombatSystem.js';
 import { PDS } from '../systems/PlayerDataSystem.js';
 import { Bus } from '../utils/EventBus.js';
+import { bindBus } from '../utils/SceneBus.js';
 
 export class Player extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, x, y) {
@@ -20,6 +21,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.invincible = false;
     this.dodging = false;
     this.guarding = false;
+    this.stunned = false;
     this.knockbackResist = 0.1;
     this.facingAngle = Math.PI / 2;
 
@@ -41,7 +43,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       cooldown: {},
     }, this);
 
-    Bus.on('player:hp', (hp, max) => { this.hp = hp; this.maxHp = max; });
+    bindBus(scene, 'player:hp', (hp, max) => { this.hp = hp; this.maxHp = max; });
   }
 
   _doSwing(step) {
@@ -81,7 +83,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   tryAttack() {
-    if (this.attackCooldown > 0) return;
+    if (this.attackCooldown > 0 || this.stunned) return;
     const now = Date.now();
     if (now - this.lastAttackTime > this.weapon.comboWindow) this.comboStep = 0;
 
@@ -95,7 +97,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   tryDodge() {
-    if (this.dodgeCooldown > 0 || this.dodging) return;
+    if (this.dodgeCooldown > 0 || this.dodging || this.stunned) return;
     this.dodgeCooldown = 900;
     CombatSystem.dodge(this);
     const angle = this.facingAngle;
@@ -108,6 +110,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   update(cursors, keys, delta) {
     if (this.dodging) return;
+    if (this.stunned) {
+      this.body.setVelocity(0, 0);
+      this.setTint(0xaa88ff);
+      if (this.comboTimer > 0) this.comboTimer -= delta;
+      if (this.dodgeCooldown > 0) this.dodgeCooldown -= delta;
+      return;
+    }
 
     const left  = cursors.left.isDown  || keys.A?.isDown;
     const right = cursors.right.isDown || keys.D?.isDown;
@@ -146,7 +155,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (this.invincible) return;
     PDS.takeDamage(final);
     this.invincible = true;
-    this.scene.time.delayedCall(800, () => { this.invincible = false; });
+    this.scene.time.delayedCall(800, () => { if (this.active) this.invincible = false; });
     this.scene.cameras.main.shake(120, 0.006);
   }
 }

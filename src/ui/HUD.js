@@ -1,6 +1,6 @@
-import { Bus } from '../utils/EventBus.js';
 import { OFUDA_DATA } from '../data/OfudaData.js';
 import { OS } from '../systems/OfudaSystem.js';
+import { bindBus } from '../utils/SceneBus.js';
 
 export class HUD {
   constructor(scene) {
@@ -59,7 +59,9 @@ export class HUD {
   }
 
   _bindEvents() {
-    Bus.on('player:hp', (hp, max) => this._updateHp(hp, max));
+    bindBus(this.scene, 'player:hp', (hp, max) => {
+      if (this._hpBar?.active) this._updateHp(hp, max);
+    });
   }
 
   _updateHp(hp, max) {

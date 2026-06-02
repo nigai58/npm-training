@@ -14,6 +14,10 @@ export const RewardSystem = {
         ? rng.int(table.magatama.min, table.magatama.max)
         : Math.floor(Math.random() * (table.magatama.max - table.magatama.min + 1)) + table.magatama.min;
     }
+    // 確定ドロップ（ボスなど）は必ず全て付与する
+    if (table.guaranteedItems) result.items.push(...table.guaranteedItems);
+
+    // 重み付き抽選で1つ選ぶ（宝箱など）
     if (table.items) {
       const totalWeight = table.items.reduce((s, i) => s + i.weight, 0);
       const roll = Math.random() * totalWeight;

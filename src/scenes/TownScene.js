@@ -1,9 +1,9 @@
 import { PDS } from '../systems/PlayerDataSystem.js';
 import { DS } from '../systems/DungeonSystem.js';
 import { OS } from '../systems/OfudaSystem.js';
-import { Bus } from '../utils/EventBus.js';
 import { DialogueBox } from '../utils/DialogueSystem.js';
 import { DIALOGUES } from '../data/DialogueData.js';
+import { bindBus } from '../utils/SceneBus.js';
 
 const W = 800, H = 560;
 const WALL = 30;
@@ -17,6 +17,7 @@ export class TownScene extends Phaser.Scene {
 
     this._interactables = [];
     this._returning = this.scene.settings.data?.returning ?? false;
+    this._cleared = PDS.hasFlag('dungeon1_cleared');
 
     this._buildGround();
     this._buildTownLayout();
@@ -34,12 +35,11 @@ export class TownScene extends Phaser.Scene {
   }
 
   _playEntrance() {
-    const dlg = new DialogueBox(this);
-    if (this._returning) {
-      dlg.show(DIALOGUES.kohaku_town_return);
-    } else {
-      dlg.show(DIALOGUES.kohaku_town_first);
+    if (this._cleared && this._returning) {
+      this._dlg.show(DIALOGUES.kohaku_town_cleared);
+      return;
     }
+    this._dlg.show(this._returning ? DIALOGUES.kohaku_town_return : DIALOGUES.kohaku_town_first);
   }
 
   _buildGround() {
@@ -107,8 +107,12 @@ export class TownScene extends Phaser.Scene {
 
   _addLantern(x, y) {
     this.add.rectangle(x, y - 14, 4, 14, 0x666655).setDepth(3);
-    this.add.rectangle(x, y, 16, 24, 0xddaa00).setDepth(3);
-    this.add.circle(x, y, 6, 0xffee66, 0.4).setDepth(4);
+    this.add.rectangle(x, y, 16, 24, this._cleared ? 0xffcc33 : 0xddaa00).setDepth(3);
+    const glow = this.add.circle(x, y, this._cleared ? 12 : 6, 0xffee66, this._cleared ? 0.5 : 0.15).setDepth(4);
+    if (this._cleared) {
+      // クリア後は灯籠に火が灯り、ゆらめく
+      this.tweens.add({ targets: glow, alpha: 0.25, scale: 1.3, yoyo: true, repeat: -1, duration: 1200, ease: 'Sine.easeInOut' });
+    }
   }
 
   _drawTorii(x, y, scale, small = false) {
@@ -156,14 +160,16 @@ export class TownScene extends Phaser.Scene {
     this.add.text(x, y - 30, 'こはく', { fontSize: '11px', color: '#ffddaa', fontFamily: 'serif', backgroundColor: '#00000066', padding: { x: 3, y: 1 } }).setDepth(11).setOrigin(0.5);
     this.tweens.add({ targets: this._kohakuParts, y: '-=4', yoyo: true, repeat: -1, duration: 900, ease: 'Sine.easeInOut' });
 
+    const kohakuLines = this._cleared ? DIALOGUES.kohaku_town_cleared : DIALOGUES.kohaku_town_first;
     this._interactables.push({
       x, y, label: 'こはく [E]',
-      onInteract: () => this._dlg.show(DIALOGUES.kohaku_town_first),
+      onInteract: () => this._dlg.show(kohakuLines),
     });
   }
 
   _buildNPCs() {
-    this._addNpc(160, 110, 0xffbb66, '札屋・紙月', 'fudaya', DIALOGUES.fudaya_1);
+    const fudaya = this._cleared ? DIALOGUES.fudaya_after_clear : DIALOGUES.fudaya_1;
+    this._addNpc(160, 110, 0xffbb66, '札屋・紙月', 'fudaya', fudaya);
     this._addNpc(W - 160, 110, 0xcc8844, '鍛冶屋・火月', 'kajiya', DIALOGUES.kajiya_1);
   }
 
@@ -188,9 +194,12 @@ export class TownScene extends Phaser.Scene {
     this._magText = this.add.text(W - 20, 18, `勾玉: ${PDS.getMagatama()}`, {
       fontSize: '15px', color: '#ffdd88', fontFamily: 'serif',
     }).setDepth(20).setOrigin(1, 0);
-    Bus.on('player:magatama', n => this._magText?.setText(`勾玉: ${n}`));
+    bindBus(this, 'player:magatama', n => { if (this._magText?.active) this._magText.setText(`勾玉: ${n}`); });
 
-    this._goalText = this.add.text(20, H - 28, '目的: 神社の鳥居からまよい町へ', {
+    const goal = this._cleared
+      ? '目的: 神具を強化に使い、次の異界へ備えよう'
+      : '目的: 神社の鳥居からまよい町へ';
+    this._goalText = this.add.text(20, H - 28, goal, {
       fontSize: '12px', color: '#aaaacc', fontFamily: 'serif',
     }).setDepth(20);
 
@@ -247,8 +256,7 @@ export class TownScene extends Phaser.Scene {
   }
 
   _enterDungeon() {
-    const dlg = new DialogueBox(this);
-    dlg.show(DIALOGUES.kohaku_before_dungeon, () => {
+    this._dlg.show(DIALOGUES.kohaku_before_dungeon, () => {
       DS.generate();
       OS.reset();
       this.cameras.main.fade(500, 0, 0, 0);

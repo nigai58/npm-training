@@ -1,6 +1,5 @@
 import { StateMachine } from '../../utils/StateMachine.js';
 import { CombatSystem } from '../../systems/CombatSystem.js';
-import { Bus } from '../../utils/EventBus.js';
 
 export class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, x, y, data) {
@@ -74,10 +73,14 @@ export class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
     return { x: dx / d, y: dy / d };
   }
 
+  // スプライトと HP バーを破棄する。重複呼び出しに耐える。
   die() {
-    this._hpBar.destroy();
-    this._hpBarBg.destroy();
-    Bus.emit('enemy:died', this);
+    if (this._dead) return;
+    this._dead = true;
+    if (this.knockbackTimer) this.knockbackTimer.remove(false);
+    if (this.stunTimer) this.stunTimer.remove(false);
+    this._hpBar?.destroy();
+    this._hpBarBg?.destroy();
     this.destroy();
   }
 

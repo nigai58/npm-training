@@ -43,12 +43,17 @@ export class DialogueBox {
 
     this._setVisible(false);
 
-    const advance = () => { if (this._visible) this._next(); };
-    this._keyHandler = scene.input.keyboard.on('keydown-SPACE', advance);
-    this._keyHandler2 = scene.input.keyboard.on('keydown-ENTER', advance);
-    scene.input.on('pointerdown', (ptr) => {
-      if (this._visible && ptr.y > scene.scale.height - 150) advance();
-    });
+    // 入力ハンドラは参照を保持し destroy() で必ず解除する（漏れ防止）
+    this._advance = () => { if (this._visible) this._next(); };
+    this._pointerAdvance = (ptr) => {
+      if (this._visible && ptr.y > scene.scale.height - 150) this._advance();
+    };
+    scene.input.keyboard.on('keydown-SPACE', this._advance);
+    scene.input.keyboard.on('keydown-ENTER', this._advance);
+    scene.input.on('pointerdown', this._pointerAdvance);
+
+    scene.events.once('shutdown', () => this.destroy());
+    scene.events.once('destroy', () => this.destroy());
   }
 
   _setVisible(v) {
@@ -101,6 +106,14 @@ export class DialogueBox {
   isVisible() { return this._visible; }
 
   destroy() {
+    if (this._destroyed) return;
+    this._destroyed = true;
+    const kb = this.scene?.input?.keyboard;
+    if (kb) {
+      kb.off('keydown-SPACE', this._advance);
+      kb.off('keydown-ENTER', this._advance);
+    }
+    this.scene?.input?.off('pointerdown', this._pointerAdvance);
     [this._bg, this._portrait, this._portraitInner, this._nameText, this._bodyText, this._hint].forEach(o => o?.destroy());
   }
 }

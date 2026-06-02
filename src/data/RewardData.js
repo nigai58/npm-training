@@ -8,11 +8,11 @@ export const REWARD_DATA = {
   },
   chest_boss: {
     magatama: { min: 8, max: 14 },
-    items: [
-      { id: 'hi_no_magatama', label: '火の勾玉',      weight: 100 },
-      { id: 'mamoriseki',     label: '狛犬の守り石',   weight: 80 },
+    guaranteedItems: [
+      { id: 'hi_no_magatama', label: '火の勾玉' },
+      { id: 'mamoriseki',     label: '狛犬の守り石' },
     ],
-    flags: ['ofuda_seal_unlocked'],
+    flags: ['dungeon1_cleared'],
   },
   enemy_kooni:    { magatama: { min: 0, max: 1 } },
   enemy_kitsunebi:{ magatama: { min: 0, max: 2 } },

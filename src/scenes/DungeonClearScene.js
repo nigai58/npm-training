@@ -52,12 +52,19 @@ export class DungeonClearScene extends Phaser.Scene {
     row('── 獲得報酬 ──', '#aa88ff');
     row(`勾玉  ×${totalMag}`, '#ffdd44');
     allItems.forEach(item => row(`・${item.label}`, '#88ffcc'));
-    if (allFlags.includes('ofuda_seal_unlocked')) row('新しいお札「封印札」を覚えた！', '#cc88ff');
 
-    y = Math.max(y, 360);
-    this.add.text(W / 2, y, '神社の灯籠に\n火が戻った……', {
-      fontSize: '14px', color: '#ffeecc', fontFamily: 'serif', align: 'center', lineSpacing: 4,
-    }).setOrigin(0.5);
+    y = Math.max(y, 350);
+    if (allFlags.includes('dungeon1_cleared')) {
+      // 五つの神具：火の勾玉が最初の1つ
+      const got = PDS.getInventory().filter(i => i.id === 'hi_no_magatama').length;
+      this.add.text(W / 2, y, `星灯りの神具　${got} / 5`, {
+        fontSize: '15px', color: '#ffcc66', fontFamily: 'serif',
+      }).setOrigin(0.5);
+      y += 28;
+      this.add.text(W / 2, y, '神社の灯籠に火が戻った……', {
+        fontSize: '13px', color: '#ffeecc', fontFamily: 'serif',
+      }).setOrigin(0.5);
+    }
 
     const btnY = H - 70;
     const btn = this.add.rectangle(W / 2, btnY, 240, 50, 0x1a2a1a).setInteractive().setStrokeStyle(2, 0x446644);
