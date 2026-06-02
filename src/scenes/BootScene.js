@@ -10,6 +10,6 @@ export class BootScene extends Phaser.Scene {
   }
 
   create() {
-    this.scene.start('Town');
+    this.scene.start('Prologue');
   }
 }

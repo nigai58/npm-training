@@ -1,13 +1,13 @@
 export const WEAPON_DATA = {
   bokuto: {
     id: 'bokuto',
-    label: '木刀',
-    damage: [12, 16, 22],
-    comboWindow: 500,
-    hitboxW: 60,
-    hitboxH: 36,
-    knockback: 180,
-    swingDuration: [200, 200, 280],
-    cooldownAfterCombo: 600,
+    label: '星灯りの木刀',
+    damage: [14, 18, 24],
+    comboWindow: 520,
+    hitboxW: 62,
+    hitboxH: 38,
+    knockback: 200,
+    swingDuration: [180, 180, 260],
+    cooldownAfterCombo: 550,
   },
 };

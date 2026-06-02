@@ -1,15 +1,16 @@
 export const REWARD_DATA = {
   chest_treasure: {
-    magatama: { min: 3, max: 6 },
+    magatama: { min: 4, max: 7 },
     items: [
-      { id: 'kakera', label: '神具の欠片', weight: 70 },
-      { id: 'ofuda_wind', label: '風札', weight: 30 },
+      { id: 'kakera',     label: '神具の欠片',   weight: 60 },
+      { id: 'ofuda_wind', label: '風札',          weight: 40 },
     ],
   },
   chest_boss: {
-    magatama: { min: 8, max: 12 },
+    magatama: { min: 8, max: 14 },
     items: [
-      { id: 'mamoriseki', label: '狛犬の守り石', weight: 100 },
+      { id: 'hi_no_magatama', label: '火の勾玉',      weight: 100 },
+      { id: 'mamoriseki',     label: '狛犬の守り石',   weight: 80 },
     ],
     flags: ['ofuda_seal_unlocked'],
   },
