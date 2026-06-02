@@ -72,8 +72,9 @@ export class HUD {
     this._hpBar.setFillStyle(col);
   }
 
-  updateRoom(current, total) {
-    this._roomText.setText(`部屋 ${current + 1} / ${total}`);
+  updateRoom(current, total, floorLabel = null) {
+    const base = `部屋 ${current + 1} / ${total}`;
+    this._roomText.setText(floorLabel ? `${floorLabel}　${base}` : base);
   }
 
   update() {

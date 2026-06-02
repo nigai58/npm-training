@@ -58,6 +58,14 @@ export const DIALOGUES = {
       text: 'お札は三種類。火・風・封印。\nダンジョンのなかで上手く使うんだぞ' },
   ],
 
+  // 輪廻の鳥居（エンドレス）導入
+  kohaku_rinne: [
+    { speaker: 'こはく', portrait: 'kohaku',
+      text: 'これが輪廻の鳥居……。\n潜るほど深く、もののけも強くなっていく場所だ' },
+    { speaker: 'こはく', portrait: 'kohaku',
+      text: '無理は禁物だぞ。集めた勾玉はその都度ちゃんと残る。\nどこまで行けるか……いっしょに試そう！' },
+  ],
+
   // ─── 札屋 ──────────────────────────────────────
   fudaya_1: [
     { speaker: '札屋・紙月さん', portrait: 'fudaya',

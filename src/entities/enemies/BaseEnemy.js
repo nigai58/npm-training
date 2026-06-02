@@ -1,5 +1,6 @@
 import { StateMachine } from '../../utils/StateMachine.js';
 import { CombatSystem } from '../../systems/CombatSystem.js';
+import { Run } from '../../systems/RunState.js';
 
 export class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, x, y, data) {
@@ -8,10 +9,11 @@ export class BaseEnemy extends Phaser.Physics.Arcade.Sprite {
     scene.physics.add.existing(this);
 
     this.enemyData = data;
-    this.hp = data.hp;
-    this.maxHp = data.hp;
+    // 輪廻の階層スケーリング（通常ダンジョンでは倍率1）
+    this.hp = Math.round(data.hp * Run.enemyHpMult);
+    this.maxHp = this.hp;
     this.speed = data.speed;
-    this.damage = data.damage;
+    this.damage = Math.round(data.damage * Run.enemyDamageMult);
     this.knockbackResist = data.knockbackResist ?? 0.5;
     this.stunned = false;
     this.stunUntil = 0;

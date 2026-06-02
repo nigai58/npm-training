@@ -1,5 +1,6 @@
-import { DUNGEONS, buildRoomTemplate } from '../data/DungeonData.js';
+import { DUNGEONS, ENDLESS_DEF, buildRoomTemplate, buildEndlessSequence } from '../data/DungeonData.js';
 import { Random } from '../utils/Random.js';
+import { Run } from './RunState.js';
 import { Bus } from '../utils/EventBus.js';
 
 class DungeonSystem {
@@ -33,6 +34,47 @@ class DungeonSystem {
     this.sessionRewards = [];
     Bus.emit('dungeon:generated', this.rooms);
   }
+
+  // ─── 輪廻（エンドレス）─────────────────────
+  generateEndless(seed) {
+    this.dungeonId = 'rinne';
+    this.endless = true;
+    this.depth = 1;
+    this.rng = new Random(seed ?? Date.now());
+    this.sessionRewards = [];
+    this._buildFloor();
+  }
+
+  _buildFloor() {
+    const d = this.depth;
+    const seq = buildEndlessSequence(d, this.rng);
+    // 深度ごとにボスを巡回させた一時定義を作る
+    const bossType = ENDLESS_DEF.bossPool[(Math.floor(d / 5) - 1 + ENDLESS_DEF.bossPool.length) % ENDLESS_DEF.bossPool.length];
+    this.def = { ...ENDLESS_DEF, bossType };
+
+    // 階層スケーリング（敵HP/攻撃力）
+    Run.enemyHpMult = 1 + 0.15 * (d - 1);
+    Run.enemyDamageMult = 1 + 0.10 * (d - 1);
+
+    this.rooms = seq.map((type, i) => ({
+      id: i,
+      type,
+      template: buildRoomTemplate(type, this.def, this.rng),
+      cleared: type === 'start' || type === 'end' || type === 'heal' || type === 'treasure',
+      doorsLocked: type === 'battle' || type === 'puzzle' || type === 'boss',
+    }));
+    this.currentIndex = 0;
+    Bus.emit('dungeon:generated', this.rooms);
+  }
+
+  nextFloor() {
+    this.depth++;
+    this._buildFloor();
+    return this.depth;
+  }
+
+  getDepth() { return this.depth; }
+  isEndless() { return this.endless; }
 
   getDef() { return this.def; }
   getDungeonName() { return this.def?.name ?? ''; }

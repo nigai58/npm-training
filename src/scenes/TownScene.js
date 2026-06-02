@@ -205,8 +205,9 @@ export class TownScene extends Phaser.Scene {
   _setupDungeonGate() {
     // 各ダンジョンの入口ゲート。unlockFlag があり未達成なら施錠。
     this._gates = [
-      { id: 'shubyori',  name: '朱鳥居の迷宮', x: W / 2, y: 90, w: 80, h: 50, unlockFlag: null },
+      { id: 'shubyori',  name: '朱鳥居の迷宮', x: W / 2, y: 90,  w: 80, h: 50, unlockFlag: null },
       { id: 'mayoiyado', name: '迷い宿',       x: 150,   y: 270, w: 80, h: 50, unlockFlag: 'dungeon1_cleared' },
+      { id: 'rinne',     name: '輪廻の鳥居',   x: W - 90, y: 270, w: 80, h: 50, unlockFlag: 'dungeon1_cleared', endless: true },
     ];
     this._gates.forEach(g => {
       const unlocked = !g.unlockFlag || PDS.hasFlag(g.unlockFlag);
@@ -217,8 +218,13 @@ export class TownScene extends Phaser.Scene {
         this.add.text(g.x, g.y, '🌫', { fontSize: '28px' }).setDepth(7).setOrigin(0.5);
       }
       this.add.text(g.x, g.y + 44, g.name, {
-        fontSize: '12px', color: unlocked ? '#ffaaaa' : '#778899', fontFamily: 'serif',
+        fontSize: '12px', color: unlocked ? (g.endless ? '#cc99ff' : '#ffaaaa') : '#778899', fontFamily: 'serif',
       }).setDepth(7).setOrigin(0.5);
+      if (g.endless && unlocked && PDS.getMaxDepth() > 0) {
+        this.add.text(g.x, g.y + 60, `最深 第${PDS.getMaxDepth()}層`, {
+          fontSize: '10px', color: '#8877aa', fontFamily: 'serif',
+        }).setDepth(7).setOrigin(0.5);
+      }
     });
 
     this._gateHintText = this.add.text(W / 2, 150, '', {
@@ -316,11 +322,14 @@ export class TownScene extends Phaser.Scene {
   }
 
   _enterDungeon(dungeonId = 'shubyori') {
-    this._dlg.show(DIALOGUES.kohaku_before_dungeon, () => {
-      DS.generate(dungeonId);
+    const endless = dungeonId === 'rinne';
+    const intro = endless ? DIALOGUES.kohaku_rinne : DIALOGUES.kohaku_before_dungeon;
+    this._dlg.show(intro, () => {
       OS.reset();
-      BlessingSystem.reset();   // ご利益を初期化
+      BlessingSystem.reset();   // ご利益を初期化（Run.reset → スケーリングも1に戻る）
       PDS.startRun();           // HP全回復・ランボーナス初期化
+      if (endless) DS.generateEndless();
+      else DS.generate(dungeonId);
       this.cameras.main.fade(500, 0, 0, 0);
       this.time.delayedCall(520, () => this.scene.start('Dungeon'));
     });

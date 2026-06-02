@@ -12,6 +12,7 @@ const META_DEFAULTS = () => ({
   ofudaUnlocked: ['fire', 'wind', 'seal'],
   flags: {},
   weapon: 'bokuto',
+  maxDepth: 0,            // 輪廻の最深到達記録
 });
 
 class PlayerDataSystem {
@@ -54,6 +55,10 @@ class PlayerDataSystem {
   getMagatama() { return this.meta.magatama; }
   getKakera() { return this.meta.kakera; }
   getUpgradeLevel(id) { return this.meta.upgrades[id] ?? 0; }
+  getMaxDepth() { return this.meta.maxDepth ?? 0; }
+  recordDepth(d) {
+    if (d > (this.meta.maxDepth ?? 0)) { this.meta.maxDepth = d; this.save(); }
+  }
   getInventory() { return this.meta.inventory; }
   getOfuda() { return this.meta.ofudaUnlocked; }
   getWeapon() { return this.meta.weapon; }

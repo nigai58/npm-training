@@ -16,6 +16,8 @@ class RunState {
     this.ofudaDamageMult = { fire: 1, wind: 1, seal: 1 };
     this.ofudaRadiusMult = { fire: 1, wind: 1, seal: 1 };
     this.taken = [];               // 取得済みご利益id（表示用）
+    this.enemyHpMult = 1;          // 輪廻の階層スケーリング
+    this.enemyDamageMult = 1;
   }
 
   applyMagatama(n) {

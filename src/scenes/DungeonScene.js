@@ -51,7 +51,7 @@ export class DungeonScene extends Phaser.Scene {
     this._setupBusListeners();
 
     this.hud = new HUD(this);
-    this.hud.updateRoom(DS.getCurrentIndex(), DS.getTotalRooms());
+    this._updateHudRoom();
 
     this.cameras.main.setBackgroundColor(0x060410);
     this.cameras.main.fadeIn(400);
@@ -312,6 +312,18 @@ export class DungeonScene extends Phaser.Scene {
     this._bossDefeated = true;
     this.cameras.main.flash(500, 255, 220, 100);
 
+    // 輪廻のボスは神具を落とさず、勾玉＋欠片を残して階層が続く
+    if (DS.isEndless()) {
+      const base = RewardSystem.generateDrop('chest_boss');
+      const reward = { magatama: Run.applyMagatama(base.magatama), items: [{ id: 'kakera', label: '神具の欠片' }], flags: [] };
+      RewardSystem.collect(reward);
+      DS.clearRoom();
+      this._currentRoom.unlockDoors();
+      const W = this._currentRoom.template.width;
+      RewardPopup.show(this, W / 2, 80, `守護獣を鎮めた！ 勾玉+${reward.magatama}・欠片+1`);
+      return;
+    }
+
     const dialogueKey = DS.getBossDialogueKey() ?? 'boss_defeated';
     const relic = DS.getRelic();
     const mamori = DS.getMamori();
@@ -339,6 +351,7 @@ export class DungeonScene extends Phaser.Scene {
   _onPlayerDead() {
     if (this._transitioning) return;
     this._transitioning = true;
+    if (DS.isEndless()) PDS.recordDepth(DS.getDepth());
     const W = this.scale.width, H = this.scale.height;
     this.add.text(W / 2, H / 2, 'きみは倒れてしまった……', {
       fontSize: '22px', color: '#cc8888', fontFamily: 'serif',
@@ -393,6 +406,7 @@ export class DungeonScene extends Phaser.Scene {
 
       const cur = DS.getCurrentRoom();
       if (cur.type === 'end') {
+        if (DS.isEndless()) { this._onFloorEnd(); return; }
         this._beginTransition(400, () => this.scene.start('DungeonClear'));
         return;
       }
@@ -418,15 +432,71 @@ export class DungeonScene extends Phaser.Scene {
 
   _transitionToNextRoom() {
     const advanced = DS.advanceRoom();
-    if (!advanced) { this.scene.start('DungeonClear'); return; }
+    if (!advanced) {
+      if (DS.isEndless()) { this._onFloorEnd(); return; }
+      this.scene.start('DungeonClear'); return;
+    }
 
     const newRoom = DS.getCurrentRoom();
     this._loadRoom(DS.getCurrentIndex());
-    this.hud.updateRoom(DS.getCurrentIndex(), DS.getTotalRooms());
+    this._updateHudRoom();
 
     this._transitioning = false;
     this.cameras.main.fadeIn(300);
     this.time.delayedCall(400, () => this._showRoomHint(newRoom.type));
+  }
+
+  _updateHudRoom() {
+    const floor = DS.isEndless() ? `輪廻 第${DS.getDepth()}層` : null;
+    this.hud.updateRoom(DS.getCurrentIndex(), DS.getTotalRooms(), floor);
+  }
+
+  // ─── 輪廻：階層クリア時の選択 ───────────────────
+  _onFloorEnd() {
+    this._choosing = true;
+    this._player?.body.setVelocity(0, 0);
+    PDS.recordDepth(DS.getDepth());
+
+    const W = this.scale.width, H = this.scale.height;
+    const objs = [];
+    objs.push(this.add.rectangle(W / 2, H / 2, W, H, 0x05030f, 0.7).setScrollFactor(0).setDepth(620));
+    objs.push(this.add.text(W / 2, H / 2 - 70, `第 ${DS.getDepth()} 層 突破！`, {
+      fontSize: '28px', color: '#ddbbff', fontFamily: 'serif', stroke: '#000', strokeThickness: 4,
+    }).setScrollFactor(0).setDepth(621).setOrigin(0.5));
+    objs.push(this.add.text(W / 2, H / 2 - 28, `最深記録: 第${PDS.getMaxDepth()}層`, {
+      fontSize: '13px', color: '#9988bb', fontFamily: 'serif',
+    }).setScrollFactor(0).setDepth(621).setOrigin(0.5));
+    objs.push(this.add.text(W / 2, H / 2 + 20, '[Space] さらに深く潜る', {
+      fontSize: '16px', color: '#aaffcc', fontFamily: 'serif',
+    }).setScrollFactor(0).setDepth(621).setOrigin(0.5));
+    objs.push(this.add.text(W / 2, H / 2 + 52, '[E] 勾玉を持って町へ帰る', {
+      fontSize: '16px', color: '#ffddaa', fontFamily: 'serif',
+    }).setScrollFactor(0).setDepth(621).setOrigin(0.5));
+
+    const cleanup = () => {
+      objs.forEach(o => o?.destroy());
+      this.input.keyboard.off('keydown-SPACE', onNext);
+      this.input.keyboard.off('keydown-E', onLeave);
+    };
+    const onNext = () => {
+      cleanup();
+      this._bossDefeated = false;   // 次のボス階層に備える
+      DS.nextFloor();
+      PDS.recordDepth(DS.getDepth());
+      this._loadRoom(0);
+      this._updateHudRoom();
+      this._choosing = false;
+      this.cameras.main.flash(300, 120, 80, 200);
+    };
+    const onLeave = () => {
+      cleanup();
+      this._choosing = false;
+      this._beginTransition(500, () => this.scene.start('Town', { returning: true }));
+    };
+    this.time.delayedCall(150, () => {
+      this.input.keyboard.on('keydown-SPACE', onNext);
+      this.input.keyboard.on('keydown-E', onLeave);
+    });
   }
 
   _cleanup() {
