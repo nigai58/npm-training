@@ -10,8 +10,9 @@
 > 範囲を限定**している。再配布が許可された譜面（Mutopia=CC）と、リンク誘導のみに
 > 留める譜面（IMSLP）をデータ構造レベルで区別する。
 
-## 機能（MVP）
+## 機能
 
+**ライブラリ（収集・整理）**
 - **譜面ライブラリ管理**: 一覧／キーワード検索／作曲家・楽器・タグ・ソース・
   ライセンスでの絞り込み、曲詳細（パート別ファイル＋ライセンスバッジ）
 - **「自分の楽器」で絞り込み**（`score_files.instrument`）
@@ -20,6 +21,13 @@
   - `mutopia` … Mutopia Project（CC、再配布可）。GitHub 上の LilyPond ヘッダから
     実データを収集
   - `imslp` … IMSLP（著作権切れ、再配布グレー）。メタデータ＋外部リンクのみ
+
+**配布（Phase 2）**
+- **合奏団・メンバー登録**（役割: 指揮者／パートリーダー／団員）
+- **譜面配布**: 指揮者・パートリーダーが登録メンバーへ譜面を送る。一般団員は配布不可。
+- ライブラリは PD/CC 譜面のみのため配布は構造上「著作権の許す範囲」に収まる。
+  再配布可の曲は実ファイル（`file`）、リンクのみの曲は外部リンク参照（`link`）として共有。
+- **受信箱**: メンバーごとに「自分宛に届いた譜面」を確認できる。
 
 ## セットアップ
 
@@ -59,16 +67,19 @@ src/
     index.js          起動エントリ
     db.js             better-sqlite3 初期化＋マイグレーション
     migrations.sql    スキーマ（works/composers/score_files/tags/sources）
-    routes/           works / files / sources の各 API
+    routes/           works / files / sources / ensembles / distributions の各 API
     services/
       library.js      検索・フィルタ・詳細（リポジトリ層）
       importer.js     収集パイプライン（正規化＆upsert、冪等）
+      ensembles.js    合奏団・メンバー管理（Phase 2）
+      distribution.js 譜面配布・受信箱（Phase 2）
   sources/            収集元アダプタ（registerSource で追加）
     index.js          レジストリ
     seed.js / mutopia.js / imslp.js
-public/               依存なしフロント（一覧・検索・詳細）
+public/               依存なしフロント（ライブラリ＋配布タブ）
+  app.js / distribute.js / index.html / styles.css
 scripts/import.js     収集 CLI
-test/                 node:test
+test/                 node:test（25 ケース）
 ```
 
 ### データモデルの肝
@@ -88,6 +99,11 @@ test/                 node:test
 | GET | `/api/files/:id` | ローカル PDF 配信 or 外部 URL へ 302 |
 | GET | `/api/sources` | 登録済み収集元一覧 |
 | POST | `/api/sources/:name/sync` | 収集の実行（`{limit, download}`）|
+| GET/POST | `/api/ensembles` | 合奏団の一覧／作成 |
+| GET/POST | `/api/ensembles/:id/members` | メンバー一覧／追加 |
+| GET | `/api/members/:id/inbox` | メンバーの受信箱 |
+| POST | `/api/distributions` | 配布作成（`{ensembleId, workId, senderMemberId, recipientMemberIds[], message}`）|
+| GET | `/api/ensembles/:id/distributions` | 配布履歴 |
 
 ## テスト
 
@@ -98,8 +114,8 @@ npm test
 importer の正規化・冪等性、library の検索/フィルタ、works API、Mutopia ヘッダ解析を
 カバー（in-memory DB、ネットワーク非依存）。
 
-## 今後（Phase 2）
+## 今後（Phase 3 以降）
 
-- 合奏団・メンバー登録（役割: 指揮者／パートリーダー／団員）
-- 指揮者・パートリーダーから登録メンバーへの譜面**配布／共有**（再配布可ソース限定）
-- 認証。`services/` のリポジトリ層分離により追加が容易。
+- 認証（ユーザー／団体）とアクセス制御。`services/` のリポジトリ層分離により追加が容易。
+- 配布のメール／プッシュ通知、既読管理。
+- パート譜の自動分割・楽器マッチング（メンバーの楽器に応じた譜面の自動提案）。

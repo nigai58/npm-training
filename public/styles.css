@@ -23,7 +23,50 @@ body {
 .topbar h1 { margin: 0; font-size: 1.4rem; }
 .tagline { margin: 4px 0 0; opacity: 0.8; font-size: 0.85rem; }
 
+.tabs { margin-top: 12px; display: flex; gap: 6px; }
+.tab { background: rgba(255,255,255,0.12); color: #fff; border: none; padding: 8px 18px; border-radius: 8px 8px 0 0; font-size: 0.9rem; opacity: 0.7; }
+.tab.active { background: var(--bg); color: var(--ink); opacity: 1; font-weight: 600; }
+
 .layout { display: grid; grid-template-columns: 280px 1fr; gap: 20px; padding: 20px; align-items: start; }
+
+/* 配布パネル */
+.distribute { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 20px; align-items: start; }
+.dist-col { display: grid; gap: 16px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+.card h2 { margin: 0 0 12px; font-size: 1.05rem; }
+.card .row { display: flex; gap: 8px; margin-bottom: 8px; }
+.card input, .card select { padding: 8px; border: 1px solid var(--line); border-radius: 8px; font: inherit; flex: 1; background: #fff; }
+.card button { padding: 8px 14px; border: 1px solid var(--accent); background: #fff; color: var(--accent); border-radius: 8px; }
+.card button.primary, .card button:hover { background: var(--accent); color: #fff; }
+.primary { width: 100%; margin-top: 6px; }
+
+.members { list-style: none; padding: 0; margin: 0 0 12px; }
+.members li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 0.88rem; }
+.m-name { font-weight: 600; }
+.m-inst { color: var(--muted); font-size: 0.78rem; }
+.role { font-size: 0.68rem; padding: 2px 7px; border-radius: 999px; white-space: nowrap; }
+.role-conductor { background: #fde8e8; color: #c0392b; }
+.role-part_leader { background: #fdf3e0; color: #b8860b; }
+.role-member { background: #eef0f3; color: var(--muted); }
+.link-btn { margin-left: auto; border: none !important; background: none !important; color: var(--muted) !important; font-size: 0.75rem; cursor: pointer; }
+.member-form { display: grid; grid-template-columns: 1fr 1fr auto auto; gap: 6px; }
+.member-hint { color: var(--muted); font-size: 0.78rem; margin: 8px 0 0; }
+
+.recipients { display: flex; flex-wrap: wrap; gap: 8px; max-height: 140px; overflow: auto; }
+.rec { display: flex; align-items: center; gap: 5px; font-size: 0.85rem; border: 1px solid var(--line); padding: 4px 8px; border-radius: 8px; }
+.share-hint { display: block; margin-top: 6px; font-size: 0.78rem; color: var(--muted); }
+#d-work { width: 100%; }
+
+.dist-log { list-style: none; padding: 0; margin: 0; }
+.dist-log li { padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 0.85rem; }
+.dist-meta { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 0.76rem; margin-top: 3px; flex-wrap: wrap; }
+.dist-msg { margin-top: 4px; color: var(--ink); font-size: 0.82rem; background: #f4f3fb; padding: 5px 8px; border-radius: 6px; }
+.when { margin-left: auto; }
+
+@media (max-width: 720px) {
+  .distribute { grid-template-columns: 1fr; }
+  .member-form { grid-template-columns: 1fr 1fr; }
+}
 .sidebar { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; position: sticky; top: 20px; }
 .field { margin-bottom: 12px; display: flex; flex-direction: column; gap: 4px; }
 .field.checkbox { flex-direction: row; align-items: center; gap: 8px; }

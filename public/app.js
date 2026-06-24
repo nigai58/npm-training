@@ -1,6 +1,8 @@
 // フロントエンド（依存なしのバニラ JS）。
 // API を叩いて一覧・検索・フィルタ・詳細表示・収集トリガを行う。
 
+import { initDistribute } from './distribute.js';
+
 const $ = (sel) => document.querySelector(sel);
 
 const filters = {
@@ -170,6 +172,22 @@ $('#detail-close').addEventListener('click', () => $('#detail').classList.add('h
 $('#detail').addEventListener('click', (e) => {
   if (e.target.id === 'detail') $('#detail').classList.add('hidden');
 });
+
+// タブ切り替え（ライブラリ / 配布）
+let distributeInited = false;
+for (const tab of document.querySelectorAll('.tab')) {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach((t) => t.classList.remove('active'));
+    tab.classList.add('active');
+    const target = tab.dataset.tab;
+    $('#panel-library').classList.toggle('hidden', target !== 'library');
+    $('#panel-distribute').classList.toggle('hidden', target !== 'distribute');
+    if (target === 'distribute' && !distributeInited) {
+      distributeInited = true;
+      initDistribute();
+    }
+  });
+}
 
 // 初期化
 loadFacets().then(loadWorks).catch((e) => {

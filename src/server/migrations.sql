@@ -68,3 +68,50 @@ CREATE TABLE IF NOT EXISTS work_tags (
   tag_id  INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
   PRIMARY KEY (work_id, tag_id)
 );
+
+-- ========================================================================
+-- Phase 2: 合奏団・メンバー・譜面配布
+-- ライブラリは PD/CC 譜面のみで構成されるため、ここでの配布は構造上
+-- 「著作権の許す範囲」に収まる。再配布可の譜面は実ファイル、リンクのみの
+-- 譜面は外部リンクの参照として共有する（share_mode で区別）。
+-- ========================================================================
+
+-- 合奏団（オーケストラ単位）
+CREATE TABLE IF NOT EXISTS ensembles (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  name        TEXT NOT NULL,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- メンバー。role: 'conductor' | 'part_leader' | 'member'
+CREATE TABLE IF NOT EXISTS members (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  ensemble_id INTEGER NOT NULL REFERENCES ensembles(id) ON DELETE CASCADE,
+  name        TEXT NOT NULL,
+  instrument  TEXT,
+  role        TEXT NOT NULL DEFAULT 'member',
+  contact     TEXT,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_members_ensemble ON members(ensemble_id);
+
+-- 配布（誰が・どの曲を・いつ送ったか）
+CREATE TABLE IF NOT EXISTS distributions (
+  id               INTEGER PRIMARY KEY AUTOINCREMENT,
+  ensemble_id      INTEGER NOT NULL REFERENCES ensembles(id) ON DELETE CASCADE,
+  work_id          INTEGER NOT NULL REFERENCES works(id) ON DELETE CASCADE,
+  sender_member_id INTEGER REFERENCES members(id) ON DELETE SET NULL,
+  share_mode       TEXT NOT NULL DEFAULT 'link',   -- 'file' | 'link'
+  message          TEXT,
+  created_at       TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_dist_ensemble ON distributions(ensemble_id);
+
+-- 配布の宛先（メンバー単位）
+CREATE TABLE IF NOT EXISTS distribution_recipients (
+  distribution_id INTEGER NOT NULL REFERENCES distributions(id) ON DELETE CASCADE,
+  member_id       INTEGER NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+  PRIMARY KEY (distribution_id, member_id)
+);

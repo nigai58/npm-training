@@ -7,6 +7,8 @@ import { fileURLToPath } from 'node:url';
 import { worksRouter } from './routes/works.js';
 import { filesRouter } from './routes/files.js';
 import { sourcesRouter } from './routes/sources.js';
+import { ensemblesRouter } from './routes/ensembles.js';
+import { distributionsRouter } from './routes/distributions.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = join(__dirname, '../../public');
@@ -19,6 +21,8 @@ export function createApp(db) {
   app.use('/api', worksRouter(db));
   app.use('/api', filesRouter(db));
   app.use('/api', sourcesRouter(db));
+  app.use('/api', ensemblesRouter(db));
+  app.use('/api', distributionsRouter(db));
 
   app.use(express.static(PUBLIC_DIR));
   return app;
