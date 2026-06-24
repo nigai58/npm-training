@@ -123,6 +123,20 @@ test/                 node:test（35 ケース）
 > 通知はアダプタ方式（`src/notifications/`）で、既定の `console`（in-app ログ）を
 > メール／プッシュ実装に差し替え可能。
 
+## デプロイ（さくらのVPS / サブドメイン fumen）
+
+`fumen.あなたのドメイン` での公開手順とサーバ設定一式は **[`deploy/`](deploy/)** にあります。
+構成は **Node（systemd 常駐）+ nginx リバースプロキシ + Let's Encrypt(HTTPS)**。
+
+```bash
+# VPS 上での更新デプロイ（初回セットアップ後）
+sudo -u fumen APP_DIR=/opt/fumen BRANCH=master bash /opt/fumen/deploy/deploy.sh
+```
+
+本番では `NODE_ENV=production`（または `SECURE_COOKIES=1`）でセッション Cookie に
+`Secure` が付与され、`trust proxy` によりリバースプロキシ配下で正しく動作します。
+詳細は [deploy/README.md](deploy/README.md) を参照。
+
 ## テスト
 
 ```bash

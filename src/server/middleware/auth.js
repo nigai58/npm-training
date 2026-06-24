@@ -35,8 +35,10 @@ export function requireAuth(req, res, next) {
   next();
 }
 
-/** Set-Cookie ヘッダ値を作る。 */
+/** Set-Cookie ヘッダ値を作る。HTTPS 配下では Secure を付与する。 */
 export function sessionCookie(token, { clear = false } = {}) {
   const maxAge = clear ? 0 : 60 * 60 * 24 * 30;
-  return `${SESSION_COOKIE}=${clear ? '' : token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${maxAge}`;
+  const secure =
+    process.env.SECURE_COOKIES === '1' || process.env.NODE_ENV === 'production' ? 'Secure; ' : '';
+  return `${SESSION_COOKIE}=${clear ? '' : token}; HttpOnly; ${secure}Path=/; SameSite=Lax; Max-Age=${maxAge}`;
 }

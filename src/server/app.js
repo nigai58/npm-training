@@ -17,6 +17,7 @@ const PUBLIC_DIR = join(__dirname, '../../public');
 
 export function createApp(db) {
   const app = express();
+  app.set('trust proxy', 1); // nginx 等のリバースプロキシ配下で動かす前提
   app.use(express.json());
   app.use(attachUser(db)); // 全リクエストで req.user を解決
 
