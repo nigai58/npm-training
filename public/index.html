@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>オーケストラ譜面ライブラリ</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <h1>🎼 オーケストラ譜面ライブラリ</h1>
+      <p class="tagline">パブリックドメイン譜面を収集・整理する</p>
+    </header>
+
+    <main class="layout">
+      <aside class="sidebar">
+        <div class="field">
+          <label for="search">キーワード</label>
+          <input id="search" type="search" placeholder="曲名・作曲家" />
+        </div>
+        <div class="field">
+          <label for="composer">作曲家</label>
+          <select id="composer"><option value="">すべて</option></select>
+        </div>
+        <div class="field">
+          <label for="instrument">自分の楽器</label>
+          <select id="instrument"><option value="">すべて</option></select>
+        </div>
+        <div class="field">
+          <label for="tag">タグ</label>
+          <select id="tag"><option value="">すべて</option></select>
+        </div>
+        <div class="field">
+          <label for="source">ソース</label>
+          <select id="source"><option value="">すべて</option></select>
+        </div>
+        <div class="field checkbox">
+          <input id="redist" type="checkbox" />
+          <label for="redist">再配布可能のみ</label>
+        </div>
+        <button id="reset" class="ghost">条件をクリア</button>
+
+        <div class="sync-box">
+          <h3>収集</h3>
+          <p class="hint">登録済みソースから譜面を取り込みます。</p>
+          <div id="sync-buttons"></div>
+          <p id="sync-status" class="sync-status"></p>
+        </div>
+      </aside>
+
+      <section class="results">
+        <div class="results-head">
+          <span id="count">0 件</span>
+        </div>
+        <ul id="works" class="works"></ul>
+        <p id="empty" class="empty hidden">
+          譜面がありません。左の「収集」から <code>seed</code> を取り込んでください。
+        </p>
+      </section>
+    </main>
+
+    <div id="detail" class="modal hidden">
+      <div class="modal-card">
+        <button id="detail-close" class="close">×</button>
+        <div id="detail-body"></div>
+      </div>
+    </div>
+
+    <script src="app.js" type="module"></script>
+  </body>
+</html>

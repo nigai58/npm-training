@@ -1,0 +1,20 @@
+{
+  "name": "orchestra-sheet-library",
+  "version": "0.1.0",
+  "description": "パブリックドメイン譜面を収集・整理するオーケストラ譜面ライブラリ",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node src/server/index.js",
+    "dev": "node --watch src/server/index.js",
+    "import": "node scripts/import.js",
+    "test": "node --test"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "better-sqlite3": "^11.8.1",
+    "express": "^4.21.2"
+  }
+}
