@@ -4,20 +4,32 @@
 export const ROLES = ['conductor', 'part_leader', 'member'];
 export const DISTRIBUTOR_ROLES = ['conductor', 'part_leader'];
 
-export function createEnsemble(db, name) {
+export function createEnsemble(db, name, ownerUserId = null) {
   if (!name) throw new Error('name is required');
-  const info = db.prepare('INSERT INTO ensembles (name) VALUES (?)').run(name);
+  const info = db
+    .prepare('INSERT INTO ensembles (name, owner_user_id) VALUES (?, ?)')
+    .run(name, ownerUserId);
   return getEnsemble(db, info.lastInsertRowid);
 }
 
-export function listEnsembles(db) {
+/** 合奏団一覧。ownerUserId 指定時はその所有分のみ。 */
+export function listEnsembles(db, ownerUserId = null) {
+  const where = ownerUserId != null ? 'WHERE e.owner_user_id = @owner' : '';
   return db
     .prepare(
       `SELECT e.*, COUNT(m.id) AS member_count
        FROM ensembles e LEFT JOIN members m ON m.ensemble_id = e.id
+       ${where}
        GROUP BY e.id ORDER BY e.created_at DESC`
     )
-    .all();
+    .all({ owner: ownerUserId });
+}
+
+/** 指定ユーザーが合奏団を操作できるか（所有者、または所有者未設定の旧データ）。 */
+export function canManage(db, ensembleId, userId) {
+  const e = db.prepare('SELECT owner_user_id FROM ensembles WHERE id = ?').get(ensembleId);
+  if (!e) return false;
+  return e.owner_user_id == null || e.owner_user_id === userId;
 }
 
 export function getEnsemble(db, id) {

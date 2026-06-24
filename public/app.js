@@ -1,7 +1,8 @@
 // フロントエンド（依存なしのバニラ JS）。
 // API を叩いて一覧・検索・フィルタ・詳細表示・収集トリガを行う。
 
-import { initDistribute } from './distribute.js';
+import { initDistribute, reloadDistribute } from './distribute.js';
+import { initAuth, onAuthChange } from './auth.js';
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -189,7 +190,13 @@ for (const tab of document.querySelectorAll('.tab')) {
   });
 }
 
+// 認証状態が変わったら配布パネルを再読み込み（所有合奏団が変わるため）
+onAuthChange(() => {
+  if (distributeInited) reloadDistribute();
+});
+
 // 初期化
+initAuth();
 loadFacets().then(loadWorks).catch((e) => {
   $('#sync-status').textContent = '初期化エラー: ' + e.message;
 });

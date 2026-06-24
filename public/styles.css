@@ -23,6 +23,24 @@ body {
 .topbar h1 { margin: 0; font-size: 1.4rem; }
 .tagline { margin: 4px 0 0; opacity: 0.8; font-size: 0.85rem; }
 
+.topbar-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.auth { display: flex; align-items: center; gap: 10px; }
+#auth-user { color: #fff; font-size: 0.85rem; opacity: 0.9; }
+.auth-btn { background: rgba(255,255,255,0.16); color: #fff; border: 1px solid rgba(255,255,255,0.3); padding: 6px 14px; border-radius: 8px; font-size: 0.82rem; }
+.auth-btn:hover { background: rgba(255,255,255,0.28); }
+.modal-card.small { max-width: 380px; }
+.auth-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+.auth-tab { flex: 1; padding: 8px; border: 1px solid var(--line); background: #fff; border-radius: 8px; color: var(--muted); }
+.auth-tab.active { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.auth-error { color: #c0392b; font-size: 0.8rem; min-height: 1em; margin: 8px 0 0; }
+.unread-badge { font-size: 0.72rem; color: #c0392b; font-weight: 600; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #c0392b; margin-right: 4px; }
+.unread strong { font-weight: 700; }
+.read-mark { color: var(--muted); font-size: 0.72rem; }
+.read-btn { color: var(--accent) !important; }
+.rec-list { list-style: none; padding: 0; margin: 0; }
+.rec-list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 0.85rem; }
+
 .tabs { margin-top: 12px; display: flex; gap: 6px; }
 .tab { background: rgba(255,255,255,0.12); color: #fff; border: none; padding: 8px 18px; border-radius: 8px 8px 0 0; font-size: 0.9rem; opacity: 0.7; }
 .tab.active { background: var(--bg); color: var(--ink); opacity: 1; font-weight: 600; }

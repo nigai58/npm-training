@@ -70,6 +70,27 @@ CREATE TABLE IF NOT EXISTS work_tags (
 );
 
 -- ========================================================================
+-- Phase 3: 認証（ユーザー・セッション）
+-- ========================================================================
+
+CREATE TABLE IF NOT EXISTS users (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  email         TEXT NOT NULL UNIQUE,
+  name          TEXT NOT NULL,
+  password_hash TEXT NOT NULL,         -- scrypt: salt:hash (hex)
+  created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+  token       TEXT PRIMARY KEY,
+  user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  expires_at  TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+
+-- ========================================================================
 -- Phase 2: 合奏団・メンバー・譜面配布
 -- ライブラリは PD/CC 譜面のみで構成されるため、ここでの配布は構造上
 -- 「著作権の許す範囲」に収まる。再配布可の譜面は実ファイル、リンクのみの

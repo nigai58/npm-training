@@ -82,12 +82,28 @@ test('GET /api/files/:id は外部リンクへリダイレクト', async () => {
   }
 });
 
-test('POST /api/sources/seed/sync は冪等', async () => {
+test('POST /api/sources/seed/sync は認証必須・冪等', async () => {
   const { base, close } = await startApp();
   try {
-    const res = await fetch(`${base}/api/sources/seed/sync`, {
+    // 未ログインは 401
+    const unauth = await fetch(`${base}/api/sources/seed/sync`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    assert.equal(unauth.status, 401);
+
+    // 登録してCookieを得る
+    const reg = await fetch(`${base}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'a@example.com', name: 'A', password: 'secret1' }),
+    });
+    const cookie = reg.headers.get('set-cookie').split(';')[0];
+
+    const res = await fetch(`${base}/api/sources/seed/sync`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: cookie },
       body: JSON.stringify({}),
     });
     const stats = await res.json();

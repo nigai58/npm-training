@@ -29,6 +29,14 @@
   再配布可の曲は実ファイル（`file`）、リンクのみの曲は外部リンク参照（`link`）として共有。
 - **受信箱**: メンバーごとに「自分宛に届いた譜面」を確認できる。
 
+**認証・通知・提案（Phase 3）**
+- **認証／アクセス制御**: ユーザー登録・ログイン（scrypt パスワード＋Cookie セッション、
+  外部依存なし）。合奏団は作成者が所有し、メンバー追加・配布・収集は**所有者のみ**。
+- **配布通知**: 配布時に各宛先へ通知（既定はサーバログの in-app 通知）。
+  `src/notifications/` のアダプタを差し替えればメール／プッシュに拡張可能。
+- **既読管理**: 受信箱の未読カウント、既読化。
+- **楽器ベースの譜面提案**: メンバーの楽器に合う譜面を、**未配布のものから**自動提案。
+
 ## セットアップ
 
 ```bash
@@ -67,19 +75,21 @@ src/
     index.js          起動エントリ
     db.js             better-sqlite3 初期化＋マイグレーション
     migrations.sql    スキーマ（works/composers/score_files/tags/sources）
-    routes/           works / files / sources / ensembles / distributions の各 API
+    middleware/auth.js  Cookieセッション解決・requireAuth（Phase 3）
+    routes/           works/files/sources/ensembles/distributions/auth の各 API
     services/
       library.js      検索・フィルタ・詳細（リポジトリ層）
       importer.js     収集パイプライン（正規化＆upsert、冪等）
-      ensembles.js    合奏団・メンバー管理（Phase 2）
-      distribution.js 譜面配布・受信箱（Phase 2）
+      ensembles.js    合奏団・メンバー管理＋所有者アクセス制御
+      distribution.js 配布・受信箱・既読・楽器ベース提案
+      auth.js         ユーザー登録・ログイン・セッション（scrypt）
   sources/            収集元アダプタ（registerSource で追加）
-    index.js          レジストリ
-    seed.js / mutopia.js / imslp.js
-public/               依存なしフロント（ライブラリ＋配布タブ）
-  app.js / distribute.js / index.html / styles.css
+    index.js / seed.js / mutopia.js / imslp.js
+  notifications/      通知アダプタ（registerNotifier、既定 console）
+public/               依存なしフロント（ライブラリ＋配布タブ＋認証）
+  app.js / distribute.js / auth.js / index.html / styles.css
 scripts/import.js     収集 CLI
-test/                 node:test（25 ケース）
+test/                 node:test（35 ケース）
 ```
 
 ### データモデルの肝
@@ -99,11 +109,19 @@ test/                 node:test（25 ケース）
 | GET | `/api/files/:id` | ローカル PDF 配信 or 外部 URL へ 302 |
 | GET | `/api/sources` | 登録済み収集元一覧 |
 | POST | `/api/sources/:name/sync` | 収集の実行（`{limit, download}`）|
-| GET/POST | `/api/ensembles` | 合奏団の一覧／作成 |
-| GET/POST | `/api/ensembles/:id/members` | メンバー一覧／追加 |
-| GET | `/api/members/:id/inbox` | メンバーの受信箱 |
-| POST | `/api/distributions` | 配布作成（`{ensembleId, workId, senderMemberId, recipientMemberIds[], message}`）|
+| POST | `/api/auth/register` / `login` / `logout` | 認証（Cookie セッション）|
+| GET | `/api/auth/me` | 現在のログインユーザー |
+| GET/POST | `/api/ensembles` | 合奏団の一覧／作成（作成は要ログイン）|
+| GET/POST | `/api/ensembles/:id/members` | メンバー一覧／追加（追加は所有者のみ）|
+| GET | `/api/members/:id/inbox` | メンバーの受信箱（`{inbox, unread}`）|
+| GET | `/api/members/:id/recommendations` | 楽器に合う未配布の譜面提案 |
+| POST | `/api/distributions` | 配布作成（要ログイン）|
+| POST | `/api/distributions/:id/read` | 既読化（`{memberId}`）|
 | GET | `/api/ensembles/:id/distributions` | 配布履歴 |
+
+> 認証は scrypt（`node:crypto`）と DB セッションのみで実装し、追加依存はなし。
+> 通知はアダプタ方式（`src/notifications/`）で、既定の `console`（in-app ログ）を
+> メール／プッシュ実装に差し替え可能。
 
 ## テスト
 
@@ -114,8 +132,8 @@ npm test
 importer の正規化・冪等性、library の検索/フィルタ、works API、Mutopia ヘッダ解析を
 カバー（in-memory DB、ネットワーク非依存）。
 
-## 今後（Phase 3 以降）
+## 今後（Phase 4 以降）
 
-- 認証（ユーザー／団体）とアクセス制御。`services/` のリポジトリ層分離により追加が容易。
-- 配布のメール／プッシュ通知、既読管理。
-- パート譜の自動分割・楽器マッチング（メンバーの楽器に応じた譜面の自動提案）。
+- メール／プッシュ通知の実アダプタ実装（現状は in-app ログ）。
+- メンバーアカウントとユーザーアカウントの紐付け（メンバー自身がログインして受信箱を見る）。
+- パート譜の自動分割、編成・難易度での高度な提案。

@@ -9,6 +9,8 @@ import { filesRouter } from './routes/files.js';
 import { sourcesRouter } from './routes/sources.js';
 import { ensemblesRouter } from './routes/ensembles.js';
 import { distributionsRouter } from './routes/distributions.js';
+import { authRouter } from './routes/auth.js';
+import { attachUser } from './middleware/auth.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = join(__dirname, '../../public');
@@ -16,8 +18,10 @@ const PUBLIC_DIR = join(__dirname, '../../public');
 export function createApp(db) {
   const app = express();
   app.use(express.json());
+  app.use(attachUser(db)); // 全リクエストで req.user を解決
 
   app.get('/api/health', (req, res) => res.json({ ok: true }));
+  app.use('/api', authRouter(db));
   app.use('/api', worksRouter(db));
   app.use('/api', filesRouter(db));
   app.use('/api', sourcesRouter(db));

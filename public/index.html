@@ -8,13 +8,40 @@
   </head>
   <body>
     <header class="topbar">
-      <h1>🎼 オーケストラ譜面ライブラリ</h1>
-      <p class="tagline">パブリックドメイン譜面を収集・整理し、メンバーへ配布する</p>
+      <div class="topbar-row">
+        <div>
+          <h1>🎼 オーケストラ譜面ライブラリ</h1>
+          <p class="tagline">パブリックドメイン譜面を収集・整理し、メンバーへ配布する</p>
+        </div>
+        <div class="auth" id="auth-box">
+          <span id="auth-user" class="hidden"></span>
+          <button id="auth-logout" class="auth-btn hidden">ログアウト</button>
+          <button id="auth-open" class="auth-btn">ログイン / 登録</button>
+        </div>
+      </div>
       <nav class="tabs">
         <button class="tab active" data-tab="library">ライブラリ</button>
         <button class="tab" data-tab="distribute">配布</button>
       </nav>
     </header>
+
+    <!-- 認証モーダル -->
+    <div id="auth-modal" class="modal hidden">
+      <div class="modal-card small">
+        <button id="auth-close" class="close">×</button>
+        <div class="auth-tabs">
+          <button class="auth-tab active" data-mode="login">ログイン</button>
+          <button class="auth-tab" data-mode="register">新規登録</button>
+        </div>
+        <div class="field" id="auth-name-field">
+          <label>名前</label><input id="auth-name" placeholder="山田太郎" />
+        </div>
+        <div class="field"><label>メール</label><input id="auth-email" type="email" placeholder="you@example.com" /></div>
+        <div class="field"><label>パスワード</label><input id="auth-password" type="password" placeholder="6文字以上" /></div>
+        <button id="auth-submit" class="primary">ログイン</button>
+        <p id="auth-error" class="auth-error"></p>
+      </div>
+    </div>
 
     <main class="layout" id="panel-library">
       <aside class="sidebar">
@@ -125,9 +152,15 @@
         </div>
 
         <div class="card">
-          <h2>受信箱（メンバー別）</h2>
+          <h2>受信箱（メンバー別） <span id="inbox-unread" class="unread-badge"></span></h2>
           <select id="inbox-member"></select>
           <ul id="inbox" class="dist-log"></ul>
+        </div>
+
+        <div class="card">
+          <h2>おすすめ譜面（楽器マッチ）</h2>
+          <p class="member-hint">受信箱で選んだメンバーの楽器に合う、未配布の譜面です。</p>
+          <ul id="recommendations" class="rec-list"></ul>
         </div>
       </div>
     </section>

@@ -3,6 +3,7 @@
 import { Router } from 'express';
 import { listSources } from '../../sources/index.js';
 import { importFromSource } from '../services/importer.js';
+import { requireAuth } from '../middleware/auth.js';
 
 export function sourcesRouter(db) {
   const router = Router();
@@ -20,7 +21,7 @@ export function sourcesRouter(db) {
   });
 
   // POST /api/sources/:name/sync  { limit?, download? }
-  router.post('/sources/:name/sync', async (req, res) => {
+  router.post('/sources/:name/sync', requireAuth, async (req, res) => {
     try {
       const { limit, download } = req.body || {};
       const stats = await importFromSource(db, req.params.name, {

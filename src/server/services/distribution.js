@@ -7,6 +7,7 @@
 
 import { getMember, DISTRIBUTOR_ROLES } from './ensembles.js';
 import { getWork } from './library.js';
+import { getNotifier } from '../../notifications/index.js';
 
 /** 曲の再配布可否から共有モードを決める。 */
 export function shareModeFor(work) {
@@ -47,13 +48,72 @@ export function createDistribution(db, input) {
       .run(ensembleId, workId, senderMemberId, shareMode, message ?? null);
     const distId = info.lastInsertRowid;
     const link = db.prepare(
-      'INSERT INTO distribution_recipients (distribution_id, member_id) VALUES (?, ?)'
+      `INSERT INTO distribution_recipients (distribution_id, member_id, notified_at)
+       VALUES (?, ?, datetime('now'))`
     );
     for (const r of recipients) link.run(distId, r.id);
     return distId;
   });
 
-  return getDistribution(db, tx());
+  const distribution = getDistribution(db, tx());
+
+  // 各宛先へ通知（既定は in-app ログ。失敗してもDB保存は維持）。
+  const notifier = getNotifier();
+  Promise.allSettled(
+    recipients.map((recipient) =>
+      notifier.notify({ recipient, distribution, work })
+    )
+  ).catch(() => {});
+
+  return distribution;
+}
+
+/** 受信メンバーが配布を既読にする。対象でなければ false。 */
+export function markRead(db, distributionId, memberId) {
+  const info = db
+    .prepare(
+      `UPDATE distribution_recipients SET read_at = datetime('now')
+       WHERE distribution_id = ? AND member_id = ? AND read_at IS NULL`
+    )
+    .run(distributionId, memberId);
+  return info.changes > 0;
+}
+
+/** メンバーの未読配布数。 */
+export function unreadCount(db, memberId) {
+  return db
+    .prepare(
+      `SELECT COUNT(*) AS n FROM distribution_recipients
+       WHERE member_id = ? AND read_at IS NULL`
+    )
+    .get(memberId).n;
+}
+
+/**
+ * メンバーの楽器に合う譜面を提案する。
+ * - 同じ instrument を持つ score_files があり、
+ * - まだそのメンバーに配布されていない曲。
+ */
+export function recommendForMember(db, memberId, limit = 10) {
+  const member = getMember(db, memberId);
+  if (!member || !member.instrument) return [];
+  return db
+    .prepare(
+      `SELECT DISTINCT w.id, w.title, w.opus, w.license_redistributable AS redistributable,
+              c.name AS composer
+       FROM works w
+       JOIN score_files sf ON sf.work_id = w.id AND sf.instrument = @instrument
+       LEFT JOIN composers c ON c.id = w.composer_id
+       WHERE NOT EXISTS (
+         SELECT 1 FROM distributions d
+         JOIN distribution_recipients dr ON dr.distribution_id = d.id
+         WHERE d.work_id = w.id AND dr.member_id = @member
+       )
+       ORDER BY c.name, w.title
+       LIMIT @limit`
+    )
+    .all({ instrument: member.instrument, member: memberId, limit })
+    .map((r) => ({ ...r, redistributable: !!r.redistributable }));
 }
 
 export function getDistribution(db, id) {
@@ -100,7 +160,7 @@ export function listEnsembleDistributions(db, ensembleId) {
 export function listMemberInbox(db, memberId) {
   return db
     .prepare(
-      `SELECT d.id, d.work_id, d.share_mode, d.message, d.created_at,
+      `SELECT d.id, d.work_id, d.share_mode, d.message, d.created_at, dr.read_at,
               w.title AS work_title, c.name AS composer,
               sender.name AS sender_name, sender.role AS sender_role
        FROM distribution_recipients dr

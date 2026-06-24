@@ -25,7 +25,23 @@ export function createDb(path = process.env.DB_PATH || DEFAULT_DB_PATH) {
   db.pragma('foreign_keys = ON');
   const schema = readFileSync(MIGRATIONS, 'utf8');
   db.exec(schema);
+  applyColumnMigrations(db);
   return db;
+}
+
+/** 既存テーブルに不足カラムを冪等に追加する（既存DBの段階的移行用）。 */
+function ensureColumn(db, table, column, ddl) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all();
+  if (!cols.some((c) => c.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${ddl}`);
+  }
+}
+
+function applyColumnMigrations(db) {
+  // Phase 3: 所有者・既読・通知日時
+  ensureColumn(db, 'ensembles', 'owner_user_id', 'owner_user_id INTEGER REFERENCES users(id)');
+  ensureColumn(db, 'distribution_recipients', 'read_at', 'read_at TEXT');
+  ensureColumn(db, 'distribution_recipients', 'notified_at', 'notified_at TEXT');
 }
 
 /** プロセス共有のシングルトン DB を返す。 */

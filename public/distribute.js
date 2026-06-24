@@ -172,26 +172,85 @@ async function renderLog() {
   ul.innerHTML = distributions.length ? distributions.map(distItem).join('') : '<li class="member-hint">配布履歴はまだありません。</li>';
 }
 
+function inboxItem(d) {
+  const unread = !d.read_at;
+  return `<li class="${unread ? 'unread' : ''}">
+    <div>
+      ${unread ? '<span class="dot" title="未読"></span>' : ''}
+      <strong>${esc(d.work_title)}</strong> <span class="m-inst">${esc(d.composer || '')}</span>
+    </div>
+    <div class="dist-meta">
+      ${d.sender_name ? `${esc(d.sender_name)} より` : ''}
+      <span class="badge ${d.share_mode === 'file' ? 'ok' : 'link'}">${d.share_mode === 'file' ? '実ファイル' : 'リンク'}</span>
+      <span class="when">${esc((d.created_at || '').replace('T', ' '))}</span>
+      ${unread ? `<button class="link-btn read-btn" data-dist="${d.id}">既読にする</button>` : '<span class="read-mark">既読</span>'}
+    </div>
+    ${d.message ? `<div class="dist-msg">${esc(d.message)}</div>` : ''}
+  </li>`;
+}
+
 async function renderInbox() {
   const sel = $('#inbox-member');
   const ul = $('#inbox');
-  if (!sel.value) return (ul.innerHTML = '');
-  const { inbox } = await api(`/api/members/${sel.value}/inbox`);
-  ul.innerHTML = inbox.length ? inbox.map(distItem).join('') : '<li class="member-hint">受信した譜面はありません。</li>';
+  if (!sel.value) {
+    ul.innerHTML = '';
+    $('#inbox-unread').textContent = '';
+    renderRecommendations();
+    return;
+  }
+  const { inbox, unread } = await api(`/api/members/${sel.value}/inbox`);
+  $('#inbox-unread').textContent = unread ? `未読 ${unread}` : '';
+  ul.innerHTML = inbox.length ? inbox.map(inboxItem).join('') : '<li class="member-hint">受信した譜面はありません。</li>';
+  ul.querySelectorAll('.read-btn').forEach((b) =>
+    b.addEventListener('click', () => markRead(b.dataset.dist))
+  );
+  renderRecommendations();
+}
+
+async function markRead(distId) {
+  const memberId = $('#inbox-member').value;
+  await api(`/api/distributions/${distId}/read`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ memberId: Number(memberId) }),
+  });
+  renderInbox();
+}
+
+async function renderRecommendations() {
+  const ul = $('#recommendations');
+  const memberId = $('#inbox-member').value;
+  if (!ul) return;
+  if (!memberId) return (ul.innerHTML = '');
+  const { recommendations } = await api(`/api/members/${memberId}/recommendations`);
+  ul.innerHTML = recommendations.length
+    ? recommendations
+        .map(
+          (r) => `<li>
+            <span>${esc(r.composer || '?')} — <strong>${esc(r.title)}</strong></span>
+            <span class="badge ${r.redistributable ? 'ok' : 'link'}">${r.redistributable ? '再配布可' : 'リンク'}</span>
+          </li>`
+        )
+        .join('')
+    : '<li class="member-hint">このメンバーの楽器に合う未配布の譜面はありません。</li>';
 }
 
 export function initDistribute() {
   $('#ensemble-add').addEventListener('click', async () => {
     const name = $('#ensemble-name').value.trim();
     if (!name) return;
-    const e = await api('/api/ensembles', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name }),
-    });
-    $('#ensemble-name').value = '';
-    await loadEnsembles(e.id);
-    await selectEnsemble(e.id);
+    try {
+      const e = await api('/api/ensembles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      $('#ensemble-name').value = '';
+      await loadEnsembles(e.id);
+      await selectEnsemble(e.id);
+    } catch (err) {
+      $('#member-hint').textContent = '合奏団を作成できません: ' + err.message;
+    }
   });
 
   $('#ensemble-select').addEventListener('change', (e) => selectEnsemble(e.target.value));
@@ -230,4 +289,14 @@ export function initDistribute() {
 
   // 初期ロード
   loadEnsembles().then(() => searchWorks('')).catch(() => {});
+}
+
+/** ログイン状態が変わったとき、所有合奏団リストを読み直す。 */
+export async function reloadDistribute() {
+  try {
+    await loadEnsembles();
+    await selectEnsemble($('#ensemble-select').value);
+  } catch {
+    /* noop */
+  }
 }
