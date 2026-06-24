@@ -33,16 +33,35 @@ sudo apt install -y nodejs
 ```
 AlmaLinux/Rocky の場合は `apt` を `dnf` に、NodeSource は `setup_20.x | sudo bash -` 後 `sudo dnf install -y nodejs nginx git`。
 
+## 1.5 Deploy key を GitHub に登録（このリポジトリは private のため必須）
+
+VPS 上で生成した SSH 鍵の**公開鍵**を、GitHub の **Deploy key** として登録すると、
+VPS から private リポジトリを SSH で clone/pull できるようになります。
+
+1. （VPSで鍵が無ければ生成）`ssh-keygen -t ed25519 -C "reordo-deploy" -f ~/.ssh/id_ed25519`
+2. 公開鍵 `~/.ssh/id_ed25519.pub` の内容をコピー
+3. GitHub → リポジトリ `nigai58/npm-training` → **Settings → Deploy keys → Add deploy key**
+   - Title: `reordo-deploy`
+   - Key: 公開鍵を貼り付け（今回いただいた `deploy/reordo-deploy.pub` がそれ）
+   - **Allow write access: チェックしない**（pull だけなので read-only で十分）
+4. 接続確認: `ssh -T git@github.com` → "successfully authenticated" が出ればOK
+
+> ⚠️ 秘密鍵 `~/.ssh/id_ed25519` は VPS の中だけに置き、誰にも渡さないでください。
+
 ## 2. 専用ユーザーとコード配置
 
 ```bash
 sudo useradd --system --create-home --home-dir /opt/fumen --shell /usr/sbin/nologin fumen
-sudo -u fumen git clone https://github.com/nigai58/npm-training.git /opt/fumen
+# private リポジトリのため SSH(deploy key) で clone する
+sudo -u fumen git clone git@github.com:nigai58/npm-training.git /opt/fumen
 cd /opt/fumen
 sudo -u fumen git checkout master   # 公開したいブランチ
 sudo -u fumen npm ci --omit=dev
 sudo -u fumen mkdir -p /opt/fumen/data /opt/fumen/storage/scores
 ```
+
+> 補足: deploy key の秘密鍵を `fumen` ユーザーが使えるよう `~fumen/.ssh/id_ed25519` に配置するか、
+> 鍵を持つ別ユーザーで clone してから所有者を `fumen` に変更してください。
 
 ## 3. 初期データ投入（任意）
 
