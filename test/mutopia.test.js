@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseLilyHeader, headerToWork } from '../src/sources/mutopia.js';
+import { parseLilyHeader, headerToWork, cleanComposer } from '../src/sources/mutopia.js';
 
 const SAMPLE = `
 \\header {
@@ -16,6 +16,13 @@ const SAMPLE = `
   license = "Public Domain"
   footer = "Mutopia-2018/01/19-517"
 }`;
+
+test('cleanComposer: 生没年括弧を除去し表記揺れを正規化', () => {
+  assert.equal(cleanComposer('Johann Sebastian Bach (1685-1750)'), 'Johann Sebastian Bach');
+  assert.equal(cleanComposer('W. A. Mozart  (1756 - 1791)'), 'W. A. Mozart');
+  assert.equal(cleanComposer('  Edvard   Grieg '), 'Edvard Grieg');
+  assert.equal(cleanComposer(''), null);
+});
 
 test('parseLilyHeader: フィールドを抽出する', () => {
   const f = parseLilyHeader(SAMPLE);

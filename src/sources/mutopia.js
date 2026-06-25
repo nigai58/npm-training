@@ -41,6 +41,15 @@ function pieceIdFrom(footer) {
   return m ? m[1] : null;
 }
 
+/** 作曲家名の表記揺れを軽く正規化（末尾の生没年括弧除去・空白整理）。 */
+export function cleanComposer(name) {
+  if (!name) return null;
+  return name
+    .replace(/\([^)]*\d{3,4}[^)]*\)/g, '') // "(1685-1750)" 等を除去
+    .replace(/\s+/g, ' ')
+    .trim() || null;
+}
+
 /** LilyPond ヘッダフィールド群を正規化済み work に変換。 */
 export function headerToWork(fields, { composerKey, headerPath } = {}) {
   const license = fields.license || 'Public Domain';
@@ -55,7 +64,7 @@ export function headerToWork(fields, { composerKey, headerPath } = {}) {
 
   return {
     title: fields.mutopiatitle || fields.title || 'Untitled',
-    composer: { name: fields.composer || composerKey || 'Unknown' },
+    composer: { name: cleanComposer(fields.composer) || composerKey || 'Unknown' },
     instrumentation: fields.mutopiainstrument || fields.instrument || null,
     opus: fields.mutopiaopus || fields.opus || null,
     year: yearFrom(fields.source),
@@ -87,24 +96,34 @@ export default {
    * @param {object} opts
    * @param {number} [opts.limit=20]
    * @param {string[]} [opts.composers]
+   * @param {number} [opts.perComposer] 1作曲家あたりの上限（偏り防止、既定8）
    * @param {typeof fetch} [opts.fetchImpl]
    */
-  async *fetchWorks({ limit = 20, composers = DEFAULT_COMPOSERS, fetchImpl = fetch } = {}) {
+  async *fetchWorks({ limit = 20, composers, perComposer = 8, fetchImpl = fetch } = {}) {
     // 全作曲家ディレクトリを 1 回で取得し SHA を引く。
     const ftp = await ghJson(`/repos/${OWNER}/${REPO}/contents/ftp`, fetchImpl);
-    const shaByName = new Map(ftp.filter((e) => e.type === 'dir').map((e) => [e.name, e.sha]));
+    const dirs = ftp.filter((e) => e.type === 'dir');
+    const shaByName = new Map(dirs.map((e) => [e.name, e.sha]));
+    // composers 未指定なら全作曲家ディレクトリを対象にする（大量収集向け）。
+    const targetComposers = composers && composers.length ? composers : dirs.map((e) => e.name);
 
     let count = 0;
-    for (const composerKey of composers) {
+    for (const composerKey of targetComposers) {
       if (count >= limit) break;
       const sha = shaByName.get(composerKey);
       if (!sha) continue;
 
       const { tree } = await ghTree(OWNER, REPO, sha, fetchImpl);
-      const headers = tree.filter((t) => t.type === 'blob' && t.path.endsWith('header.ily'));
+      // メタデータは header.ily か、各 .ly ファイル内の \header{} ブロックに入っている。
+      // Mutopia の大半は後者なので両方を対象にする。
+      const headers = tree.filter(
+        (t) => t.type === 'blob' && (t.path.endsWith('header.ily') || t.path.endsWith('.ly'))
+      );
 
+      // 1作曲家に偏らないよう perComposer 件で打ち切り、多くの作曲家へ分散させる。
+      let perCount = 0;
       for (const h of headers) {
-        if (count >= limit) break;
+        if (count >= limit || perCount >= perComposer) break;
         const headerPath = `ftp/${composerKey}/${h.path}`;
         let text;
         try {
@@ -116,6 +135,7 @@ export default {
         if (!fields.mutopiatitle && !fields.title) continue;
         yield headerToWork(fields, { composerKey, headerPath });
         count++;
+        perCount++;
       }
     }
   },

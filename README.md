@@ -53,6 +53,10 @@ node scripts/import.js seed
 # Mutopia から実データを収集（再配布可・CC）
 node scripts/import.js mutopia --limit 15
 
+# 大量収集: 全作曲家ディレクトリから均等に取り込む（300曲以上）。
+# 既定で 1 作曲家あたり最大 8 曲に分散させ、特定作曲家への偏りを防ぐ。
+node scripts/import.js mutopia --limit 500
+
 # IMSLP のメタデータ＋外部リンク
 node scripts/import.js imslp --limit 20
 
