@@ -1,0 +1,35 @@
+# systemd ユニット（さくらVPS等での常駐起動）
+# 配置: /etc/systemd/system/orchestra-fumen.service
+#
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now orchestra-fumen
+#   sudo systemctl status orchestra-fumen
+
+[Unit]
+Description=Orchestra Sheet Library (fumen)
+After=network.target
+
+[Service]
+Type=simple
+User=fumen
+Group=fumen
+WorkingDirectory=/opt/fumen
+ExecStart=/usr/bin/node src/server/index.js
+Restart=on-failure
+RestartSec=3
+
+# 本番設定
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=SECURE_COOKIES=1
+Environment=DB_PATH=/opt/fumen/data/app.db
+# Mutopia 等の収集でプロキシ環境を使う場合のみ:
+# Environment=NODE_USE_ENV_PROXY=1
+
+# セキュリティ強化
+NoNewPrivileges=true
+ProtectSystem=full
+ReadWritePaths=/opt/fumen/data /opt/fumen/storage
+
+[Install]
+WantedBy=multi-user.target

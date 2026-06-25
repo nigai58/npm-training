@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>オーケストラ譜面ライブラリ</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="topbar-row">
+        <div>
+          <h1>🎼 オーケストラ譜面ライブラリ</h1>
+          <p class="tagline">パブリックドメイン譜面を収集・整理し、メンバーへ配布する</p>
+        </div>
+        <div class="auth" id="auth-box">
+          <span id="auth-user" class="hidden"></span>
+          <button id="auth-logout" class="auth-btn hidden">ログアウト</button>
+          <button id="auth-open" class="auth-btn">ログイン / 登録</button>
+        </div>
+      </div>
+      <nav class="tabs">
+        <button class="tab active" data-tab="library">ライブラリ</button>
+        <button class="tab" data-tab="distribute">配布</button>
+      </nav>
+    </header>
+
+    <!-- 認証モーダル -->
+    <div id="auth-modal" class="modal hidden">
+      <div class="modal-card small">
+        <button id="auth-close" class="close">×</button>
+        <div class="auth-tabs">
+          <button class="auth-tab active" data-mode="login">ログイン</button>
+          <button class="auth-tab" data-mode="register">新規登録</button>
+        </div>
+        <div class="field" id="auth-name-field">
+          <label>名前</label><input id="auth-name" placeholder="山田太郎" />
+        </div>
+        <div class="field"><label>メール</label><input id="auth-email" type="email" placeholder="you@example.com" /></div>
+        <div class="field"><label>パスワード</label><input id="auth-password" type="password" placeholder="6文字以上" /></div>
+        <button id="auth-submit" class="primary">ログイン</button>
+        <p id="auth-error" class="auth-error"></p>
+      </div>
+    </div>
+
+    <main class="layout" id="panel-library">
+      <aside class="sidebar">
+        <div class="field">
+          <label for="search">キーワード</label>
+          <input id="search" type="search" placeholder="曲名・作曲家" />
+        </div>
+        <div class="field">
+          <label for="composer">作曲家</label>
+          <select id="composer"><option value="">すべて</option></select>
+        </div>
+        <div class="field">
+          <label for="instrument">自分の楽器</label>
+          <select id="instrument"><option value="">すべて</option></select>
+        </div>
+        <div class="field">
+          <label for="tag">タグ</label>
+          <select id="tag"><option value="">すべて</option></select>
+        </div>
+        <div class="field">
+          <label for="source">ソース</label>
+          <select id="source"><option value="">すべて</option></select>
+        </div>
+        <div class="field checkbox">
+          <input id="redist" type="checkbox" />
+          <label for="redist">再配布可能のみ</label>
+        </div>
+        <button id="reset" class="ghost">条件をクリア</button>
+
+        <div class="sync-box">
+          <h3>収集</h3>
+          <p class="hint">登録済みソースから譜面を取り込みます。</p>
+          <div id="sync-buttons"></div>
+          <p id="sync-status" class="sync-status"></p>
+        </div>
+      </aside>
+
+      <section class="results">
+        <div class="results-head">
+          <span id="count">0 件</span>
+        </div>
+        <ul id="works" class="works"></ul>
+        <p id="empty" class="empty hidden">
+          譜面がありません。左の「収集」から <code>seed</code> を取り込んでください。
+        </p>
+      </section>
+    </main>
+
+    <!-- 配布パネル（Phase 2） -->
+    <section class="distribute hidden" id="panel-distribute">
+      <div class="dist-col">
+        <div class="card">
+          <h2>合奏団</h2>
+          <div class="row">
+            <select id="ensemble-select"><option value="">-- 選択 --</option></select>
+          </div>
+          <div class="row">
+            <input id="ensemble-name" placeholder="新しい合奏団名" />
+            <button id="ensemble-add">作成</button>
+          </div>
+        </div>
+
+        <div class="card" id="members-card">
+          <h2>メンバー</h2>
+          <ul id="members" class="members"></ul>
+          <div class="member-form">
+            <input id="m-name" placeholder="名前" />
+            <input id="m-instrument" placeholder="楽器 (例: Violin)" />
+            <select id="m-role">
+              <option value="member">団員</option>
+              <option value="part_leader">パートリーダー</option>
+              <option value="conductor">指揮者</option>
+            </select>
+            <button id="member-add">追加</button>
+          </div>
+          <p class="member-hint" id="member-hint"></p>
+        </div>
+      </div>
+
+      <div class="dist-col">
+        <div class="card" id="compose-card">
+          <h2>譜面を配布</h2>
+          <div class="field">
+            <label>送信者（指揮者／パートリーダーのみ）</label>
+            <select id="d-sender"></select>
+          </div>
+          <div class="field">
+            <label>譜面を検索</label>
+            <input id="d-work-search" placeholder="曲名・作曲家で検索" />
+            <select id="d-work" size="5"></select>
+            <span id="d-share-hint" class="share-hint"></span>
+          </div>
+          <div class="field">
+            <label>宛先メンバー</label>
+            <div class="recipients" id="d-recipients"></div>
+          </div>
+          <div class="field">
+            <label>メッセージ（任意）</label>
+            <input id="d-message" placeholder="例: 次回練習までに確認お願いします" />
+          </div>
+          <button id="d-send" class="primary">配布する</button>
+          <p id="d-status" class="sync-status"></p>
+        </div>
+
+        <div class="card">
+          <h2>配布履歴</h2>
+          <ul id="dist-log" class="dist-log"></ul>
+        </div>
+
+        <div class="card">
+          <h2>受信箱（メンバー別） <span id="inbox-unread" class="unread-badge"></span></h2>
+          <select id="inbox-member"></select>
+          <ul id="inbox" class="dist-log"></ul>
+        </div>
+
+        <div class="card">
+          <h2>おすすめ譜面（楽器マッチ）</h2>
+          <p class="member-hint">受信箱で選んだメンバーの楽器に合う、未配布の譜面です。</p>
+          <ul id="recommendations" class="rec-list"></ul>
+        </div>
+      </div>
+    </section>
+
+    <div id="detail" class="modal hidden">
+      <div class="modal-card">
+        <button id="detail-close" class="close">×</button>
+        <div id="detail-body"></div>
+      </div>
+    </div>
+
+    <script src="app.js" type="module"></script>
+  </body>
+</html>

@@ -1,0 +1,88 @@
+[
+  {
+    "title": "Symphony No. 5 in C minor",
+    "composer": { "name": "Ludwig van Beethoven", "birthYear": 1770, "deathYear": 1827, "era": "Classical" },
+    "instrumentation": "Orchestra",
+    "opus": "Op. 67",
+    "year": 1808,
+    "sourceUrl": "https://imslp.org/wiki/Symphony_No.5,_Op.67_(Beethoven,_Ludwig_van)",
+    "license": "Public Domain",
+    "licenseRedistributable": false,
+    "tags": ["Symphony", "Orchestra", "Romantic"],
+    "files": [
+      { "label": "Full Score", "instrument": "Score", "format": "link", "storageKind": "external", "externalUrl": "https://imslp.org/wiki/Symphony_No.5,_Op.67_(Beethoven,_Ludwig_van)" }
+    ]
+  },
+  {
+    "title": "The Four Seasons - Spring",
+    "composer": { "name": "Antonio Vivaldi", "birthYear": 1678, "deathYear": 1741, "era": "Baroque" },
+    "instrumentation": "Violin solo, Strings, Continuo",
+    "opus": "RV 269",
+    "year": 1725,
+    "sourceUrl": "https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=20",
+    "license": "Public Domain",
+    "licenseRedistributable": true,
+    "tags": ["Concerto", "Strings", "Baroque", "Violin"],
+    "files": [
+      { "label": "Violin I", "instrument": "Violin", "format": "pdf", "storageKind": "external", "externalUrl": "https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=20" },
+      { "label": "Full Score", "instrument": "Score", "format": "pdf", "storageKind": "external", "externalUrl": "https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=20" }
+    ]
+  },
+  {
+    "title": "Eine kleine Nachtmusik",
+    "composer": { "name": "Wolfgang Amadeus Mozart", "birthYear": 1756, "deathYear": 1791, "era": "Classical" },
+    "instrumentation": "String ensemble",
+    "opus": "K. 525",
+    "year": 1787,
+    "sourceUrl": "https://imslp.org/wiki/Eine_kleine_Nachtmusik,_K.525_(Mozart,_Wolfgang_Amadeus)",
+    "license": "Public Domain",
+    "licenseRedistributable": false,
+    "tags": ["Serenade", "Strings", "Classical"],
+    "files": [
+      { "label": "Full Score", "instrument": "Score", "format": "link", "storageKind": "external", "externalUrl": "https://imslp.org/wiki/Eine_kleine_Nachtmusik,_K.525_(Mozart,_Wolfgang_Amadeus)" }
+    ]
+  },
+  {
+    "title": "Cello Suite No. 1 in G major",
+    "composer": { "name": "Johann Sebastian Bach", "birthYear": 1685, "deathYear": 1750, "era": "Baroque" },
+    "instrumentation": "Cello",
+    "opus": "BWV 1007",
+    "year": 1720,
+    "sourceUrl": "https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=517",
+    "license": "Public Domain",
+    "licenseRedistributable": true,
+    "tags": ["Suite", "Cello", "Baroque"],
+    "files": [
+      { "label": "Cello", "instrument": "Cello", "format": "pdf", "storageKind": "external", "externalUrl": "https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=517" }
+    ]
+  },
+  {
+    "title": "Symphony No. 8 in B minor (Unfinished)",
+    "composer": { "name": "Franz Schubert", "birthYear": 1797, "deathYear": 1828, "era": "Romantic" },
+    "instrumentation": "Orchestra",
+    "opus": "D. 759",
+    "year": 1822,
+    "sourceUrl": "https://imslp.org/wiki/Symphony_No.8,_D.759_(Schubert,_Franz)",
+    "license": "Public Domain",
+    "licenseRedistributable": false,
+    "tags": ["Symphony", "Orchestra", "Romantic"],
+    "files": [
+      { "label": "Full Score", "instrument": "Score", "format": "link", "storageKind": "external", "externalUrl": "https://imslp.org/wiki/Symphony_No.8,_D.759_(Schubert,_Franz)" }
+    ]
+  },
+  {
+    "title": "Canon in D major",
+    "composer": { "name": "Johann Pachelbel", "birthYear": 1653, "deathYear": 1706, "era": "Baroque" },
+    "instrumentation": "3 Violins, Continuo",
+    "opus": "T. 337",
+    "year": 1680,
+    "sourceUrl": "https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=84",
+    "license": "Public Domain",
+    "licenseRedistributable": true,
+    "tags": ["Canon", "Strings", "Baroque", "Violin"],
+    "files": [
+      { "label": "Violin I", "instrument": "Violin", "format": "pdf", "storageKind": "external", "externalUrl": "https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=84" },
+      { "label": "Full Score", "instrument": "Score", "format": "pdf", "storageKind": "external", "externalUrl": "https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=84" }
+    ]
+  }
+]
